@@ -2,6 +2,7 @@
 # Build a Codex subject on BARE METAL: real x86 under QEMU, no host runtime.
 #
 #   ./build.sh fib        the smoke test -- one self-contained chapter, minutes
+#   ./build.sh addrof     the address-of probe: what the builtin answers, per arm
 #   ./build.sh codexir    the compiler, as a native tool: .codex -> .ir
 #   ./build.sh zigemit    the plug, as a native tool:    .ir    -> .zig
 #   ./build.sh all        all three, cheapest first, stopping at the first red
@@ -42,7 +43,7 @@ export PWSH ZIG
 CODEX_SHA="$(git -C "$CODEX_ROOT" rev-parse HEAD)"
 
 want="${1:-all}"
-case "$want" in fib|codexir|zigemit|x86emit|all) ;; *) echo "usage: build.sh [fib|codexir|zigemit|x86emit|all]" >&2; exit 2 ;; esac
+case "$want" in fib|addrof|codexir|zigemit|x86emit|all) ;; *) echo "usage: build.sh [fib|addrof|codexir|zigemit|x86emit|all]" >&2; exit 2 ;; esac
 
 if [ -z "${SANDBOX:-}" ]; then
     SANDBOX="$HOME/runs/$(date -u +%Y%m%dT%H%M%SZ)-$want"
@@ -84,6 +85,15 @@ if [ "$want" = fib ] || [ "$want" = all ]; then
     cp "$T/subjects/fib.codex" "$S/fib-subject.codex"
     ring_plug_fresh
     build_one fib "" "" fib-subject.codex
+fi
+
+# addrof, like fib, cites nothing: the subject IS the chapter. It is a PROBE
+# and not part of `all` -- it answers a question rather than guarding a claim,
+# and a probe in the nightly is a probe nobody reads.
+if [ "$want" = addrof ]; then
+    cp "$T/subjects/addrof.codex" "$S/addrof-subject.codex"
+    ring_plug_fresh
+    build_one addrof "" "" addrof-subject.codex
 fi
 
 if [ "$want" = zigemit ] || [ "$want" = all ]; then

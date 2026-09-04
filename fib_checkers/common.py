@@ -100,3 +100,107 @@ def check(got, route, extra=''):
         fail(f'{route}: fib printed {lines}, want {WANT}')
     print(f'PASS  {route}: fib prints {" and ".join(WANT)}{extra}')
     return 0
+
+
+# ---------------------------------------------------------------------------
+# Booting an emitted dump. Extracted here on its SECOND caller, not its first:
+# `verify_fib_by_booting.py` asserts one number, and the address-of probe reads
+# whatever comes out. The parsing and reassembly are identical; only the
+# question differs, so only the question stays in the callers.
+# ---------------------------------------------------------------------------
+
+
+def sections(text):
+    """Carve `header`, `content` and `tail` out of an x86 dump.
+
+    Fails loud on every shape that is not a clean dump. The lengths are declared
+    in the head and the bytes come as decimal lists, so a section that does not
+    match its declared length is a CORRUPT dump rather than a short one, and
+    saying so beats an IndexError twenty lines later.
+
+    Two head shapes are not `key value`. `emit-diags N` is followed by N diag
+    lines and a `.`; the ladder's parser walked straight into that `.` with
+    `int('')` and had been dead for weeks, silently, because nothing in the
+    sweep called it. And `CODEGEN-HALTED` means a bag with errors gated the byte
+    sections off entirely, so there is nothing to carve.
+    """
+    lines = text.splitlines()
+    lens, out, i = {}, {}, 0
+
+    while i < len(lines) and not lines[i].startswith('---'):
+        line = lines[i]
+        if line.startswith('CODEGEN-HALTED'):
+            fail(f'{line} -- emission halted, so there are no sections to boot')
+        key, _, val = line.partition(' ')
+        try:
+            lens[key] = int(val)
+        except ValueError:
+            fail(f'expected `key count` in the dump head, got {line!r}')
+        i += 1
+        if key == 'emit-diags':
+            i += lens[key]
+            if i >= len(lines) or lines[i] != '.':
+                fail(f'{lens[key]} diags declared, list ends at '
+                       f'{lines[i] if i < len(lines) else "end of dump"!r} instead of "."')
+            i += 1
+
+    while i < len(lines):
+        # The harness closes with `=== end <subject> ===`. Stop there rather
+        # than reading it as a section name -- which is what it did, and the
+        # refusal named the footer, which is how this was found in one run.
+        if lines[i].startswith('==='):
+            break
+        name = lines[i].strip('- ')
+        i += 1
+        body = []
+        while i < len(lines) and lines[i] != '.':
+            body.append(lines[i])
+            i += 1
+        i += 1
+        if name == 'symbols':
+            continue
+        by = bytes(int(t) for line in body for t in line.split())
+        want = lens.get(f'{name}-len')
+        if want is None:
+            fail(f'section {name!r} has no {name}-len in the head')
+        if len(by) != want:
+            fail(f'{name}: head says {want} bytes, dump carries {len(by)}')
+        out[name] = by
+
+    for need in ('header', 'content', 'tail'):
+        if need not in out:
+            fail(f'dump has no {need} section')
+    return out
+
+
+
+def boot_emitted(x86emit, work, name):
+    """Run an x86emit tool, reassemble its dump, boot it, return what it printed.
+
+    The reassembly is what the compiler's own `emit-binary-tail` does: header,
+    then content, then tail. The VM prints its own bookkeeping alongside the
+    program's output, and those lines are dropped rather than matched around --
+    a caller comparing against them would be comparing against the harness.
+    """
+    import codex_vm
+
+    r = run([str(x86emit)])
+    dump = r.stderr or r.stdout
+    if not dump.strip():
+        fail(f'x86emit printed nothing (rc={r.returncode})')
+
+    s = sections(dump_body(dump))
+    cdx = s['header'] + s['content'] + s['tail']
+    if not cdx.startswith(b'CDX1'):
+        fail(f'reassembled file does not start with CDX1: {cdx[:8]!r}')
+
+    work.mkdir(exist_ok=True)
+    binary = work / f'booted-{name}.cdx'
+    binary.write_bytes(cdx)
+    print(f'      reassembled {len(cdx)} bytes '
+          f'({len(s["header"])} header + {len(s["content"])} content + {len(s["tail"])} tail)')
+
+    out = codex_vm.run_cdx(str(binary), timeout=300, idle_timeout=120)
+    return '\n'.join(
+        l.rstrip('\r') for l in out.decode(errors='replace').splitlines()
+        if not l.startswith(('WD:', 'HEAP:', 'STACK:'))).strip()

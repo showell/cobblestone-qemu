@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate X86EmitHarness.codex: the x86-64 back end over fib.
+"""Generate X86EmitHarness.codex: the x86-64 back end over one subject.
 
 **THIS SUBJECT IS SHAPED DIFFERENTLY FROM THE OTHER TWO, and the difference is
 the back end's, not a shortcut here.** `codexir` and `zigemit` are filters --
@@ -19,6 +19,7 @@ The ladder's version carried a second subject -- a real compiler chapter, under
 `ir_to_x86_on_cce` -- so that one bundle answered two questions. That one is not
 here yet. It is the obvious next addition and it is deliberately not day one.
 """
+import os
 import pathlib
 import sys
 
@@ -46,9 +47,45 @@ FIB = (
     '  end\n'
 )
 
+# ADDROF asks what `address-of` answers when the program runs on REAL x86 with
+# bare metal's own value representation, which is the one thing no hosted arm
+# can tell us. It is trimmed to what fib already proves the back end can do --
+# integers, `show`, self-contained constructors -- because a probe that fails to
+# boot for an unrelated reason answers nothing. No text literal on purpose: the
+# harness note above says fib was chosen for touching no rodata.
+ADDROF = (
+    'Chapter: AddrOfProbe\n'
+    '\n'
+    'Section: Subjects\n'
+    '  Mode =\n'
+    '   | MA\n'
+    '   | MB\n'
+    '   | MC\n'
+    '\n'
+    '  Wrapped =\n'
+    '   | WNone\n'
+    '   | WSome (Integer)\n'
+    '\n'
+    'Section: Main\n'
+    '  opening : [Console] Nothing = act\n'
+    '   print-line-uni (show (address-of MA))\n'
+    '   print-line-uni (show (address-of MB))\n'
+    '   print-line-uni (show (address-of MC))\n'
+    '   print-line-uni (show (address-of WNone))\n'
+    '   print-line-uni (show (address-of (WSome 5)))\n'
+    '   print-line-uni (show (address-of (WSome 5)))\n'
+    '   print-line-uni (show (address-of 7))\n'
+    '  end\n'
+)
+
+SUBJECTS = {'fib': FIB, 'addrof': ADDROF}
+
 # The chapter name and walker prefix reach the compiled unit as Codex
 # identifiers and are not this subject's name; they stay as the ladder had them.
-out = harness_source('FibxHarness', 'fibx', [('x86emit_on_fib', FIB)])
+want = os.environ.get('X86EMIT_SUBJECT', 'fib')
+if want not in SUBJECTS:
+    raise SystemExit(f"X86EMIT_SUBJECT={want!r}: known subjects are {sorted(SUBJECTS)}")
+out = harness_source('FibxHarness', 'fibx', [(f'x86emit_on_{want}', SUBJECTS[want])])
 dest = out_root() / 'X86EmitHarness.codex'
 dest.write_text(out)
-print(f'{dest}: {len(out)} bytes, subject x86emit_on_fib')
+print(f'{dest}: {len(out)} bytes, subject x86emit_on_{want}')

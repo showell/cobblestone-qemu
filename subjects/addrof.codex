@@ -1,0 +1,47 @@
+Chapter: AddrOfProbe
+
+ What does `address-of` answer, and is that answer an identity?
+
+ `address-of` is typed `forall a. a -> Integer` and emitted on bare metal by
+ `emit-identity-builtin` -- the value itself, no load. `variant-tag` emits
+ `mov-load rd, r, 0` instead, dereferencing word 0. So a variant is a pointer
+ and address-of hands back that pointer -- IF a payload-free variant is boxed
+ at all. If it is instead an immediate tag word, then `address-of MA` is 0 for
+ the first constructor, and the compiler's own `address-of m == 0` absence
+ idiom (Types/Unifier.codex, ten sites) reads a real value as absent.
+
+ The two `WSome 5` lines are the identity question rather than the value
+ question: `mkey-type` mixes address-of answers into a hash-cons key that
+ `cons-probe-at` matches in FULL and then adopts on, with no structural
+ re-check. That is only sound if equal structure gives equal answers and
+ distinct structure gives distinct ones. Two separately built `WSome 5` say
+ which half, if either, holds here.
+
+Section: Subjects
+
+  Mode =
+   | MA
+   | MB
+   | MC
+
+  Wrapped =
+   | WNone
+   | WSome (Integer)
+
+Section: Main
+
+  opening : [Console] Nothing
+  opening = act
+   print-line-uni ("payload-free MA addr " & show (address-of MA))
+   print-line-uni ("payload-free MB addr " & show (address-of MB))
+   print-line-uni ("payload-free MC addr " & show (address-of MC))
+   print-line-uni ("payload-free MA tag  " & show (variant-tag MA))
+   print-line-uni ("payload-free MB tag  " & show (variant-tag MB))
+   print-line-uni ("payload-free MC tag  " & show (variant-tag MC))
+   print-line-uni ("mixed WNone addr     " & show (address-of WNone))
+   print-line-uni ("mixed WSome 5 addr   " & show (address-of (WSome 5)))
+   print-line-uni ("mixed WSome 5 addr   " & show (address-of (WSome 5)))
+   print-line-uni ("integer 7 addr       " & show (address-of 7))
+   print-line-uni ("integer 0 addr       " & show (address-of 0))
+   print-line-uni ("text addr            " & show (address-of "hello"))
+  end
