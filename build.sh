@@ -42,7 +42,7 @@ export PWSH ZIG
 CODEX_SHA="$(git -C "$CODEX_ROOT" rev-parse HEAD)"
 
 want="${1:-all}"
-case "$want" in fib|codexir|zigemit|all) ;; *) echo "usage: build.sh [fib|codexir|zigemit|all]" >&2; exit 2 ;; esac
+case "$want" in fib|codexir|zigemit|x86emit|all) ;; *) echo "usage: build.sh [fib|codexir|zigemit|x86emit|all]" >&2; exit 2 ;; esac
 
 if [ -z "${SANDBOX:-}" ]; then
     SANDBOX="$HOME/runs/$(date -u +%Y%m%dT%H%M%SZ)-$want"
@@ -94,6 +94,11 @@ fi
 if [ "$want" = codexir ] || [ "$want" = all ]; then
     [ "$want" = codexir ] && ring_plug_fresh
     build_one codexir gen_codexir_harness.py bundle_codexir.ps1 codexir-subject.codex
+fi
+
+if [ "$want" = x86emit ] || [ "$want" = all ]; then
+    [ "$want" = x86emit ] && ring_plug_fresh || true
+    build_one x86emit gen_x86emit_harness.py bundle_x86emit.ps1 x86emit-subject.codex
 fi
 
 echo
