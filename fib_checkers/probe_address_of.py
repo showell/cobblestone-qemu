@@ -22,7 +22,13 @@ asserts: there is no gold here, the answer IS the finding.
 Needs `X86EMIT_SUBJECT=addrof ./build.sh x86emit` -- the x86 harness compiles
 its subject IN, so the fib-subject tool cannot answer this.
 """
+# `-B` in the shebang only applies when this is run as ./name.py. Run as
+# `python3 name.py` it does not, and the import below then writes a __pycache__
+# into a repository that has no ignore rules on purpose -- which is how five
+# .pyc files once reached a commit. Set before the first import, not after.
 import sys
+sys.dont_write_bytecode = True
+
 
 import common as c
 

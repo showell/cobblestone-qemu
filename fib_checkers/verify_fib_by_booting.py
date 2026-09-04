@@ -24,7 +24,13 @@ the x86 back end, F3 run it, F4 boot it -- that stopped existing when F1 and F2
 dissolved into rungs. Nobody could tell what F4 was without finding a README
 paragraph 1,800 lines in. It is named for its question now.
 """
+# `-B` in the shebang only applies when this is run as ./name.py. Run as
+# `python3 name.py` it does not, and the import below then writes a __pycache__
+# into a repository that has no ignore rules on purpose -- which is how five
+# .pyc files once reached a commit. Set before the first import, not after.
 import sys
+sys.dont_write_bytecode = True
+
 
 import common as c
 

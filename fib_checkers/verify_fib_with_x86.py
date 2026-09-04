@@ -12,6 +12,13 @@ translation of the same program.
 Nothing is patched: `finalize` resolved every call before serialising, which is
 the difference between this and a pre-finalize dump.
 """
+# `-B` in the shebang only applies when this is run as ./name.py. Run as
+# `python3 name.py` it does not, and the import below then writes a __pycache__
+# into a repository that has no ignore rules on purpose -- which is how five
+# .pyc files once reached a commit. Set before the first import, not after.
+import sys
+sys.dont_write_bytecode = True
+
 import os
 import re
 import sys

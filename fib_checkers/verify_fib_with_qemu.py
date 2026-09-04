@@ -13,6 +13,13 @@ metal says `boolean` -- see FINDINGS.md. A verifier that only checked 55 and 610
 would have passed both ways round, because the wrong type does not change what
 fib computes.
 """
+# `-B` in the shebang only applies when this is run as ./name.py. Run as
+# `python3 name.py` it does not, and the import below then writes a __pycache__
+# into a repository that has no ignore rules on purpose -- which is how five
+# .pyc files once reached a commit. Set before the first import, not after.
+import sys
+sys.dont_write_bytecode = True
+
 import os
 import subprocess
 import sys
