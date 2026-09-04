@@ -36,7 +36,14 @@ say_elapsed() {  # <label> <start-epoch>
 }
 
 ring_plug_fresh() {
-    local t0=$(date +%s)
+    # EVERY VARIABLE HERE IS LOCAL, and the omission was not cosmetic: `want`
+    # held the ring plug's sha and clobbered build.sh's `$want`, which is the
+    # subject being built. After the plug was built, every later
+    # `[ "$want" = all ]` compared against a sha256 and was false -- so
+    # `./build.sh all` built fib, printed "done", and silently skipped codexir
+    # and zigemit. A build that does less than it says and exits 0.
+    local t0 want out
+    t0=$(date +%s)
     echo "############ ring plug"
     cd "$S"
     rm -f ringplug-source.codex
