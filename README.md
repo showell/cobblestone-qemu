@@ -20,6 +20,14 @@ That builds three subjects, cheapest first, stopping at the first failure:
 | `fib` | one self-contained chapter | the smoke test — exercises the whole transport with none of the bundling |
 | `zigemit` | the plug, as a native tool: `.ir` → `.zig` | |
 | `codexir` | the compiler, as a native tool: `.codex` → `.ir` | |
+| `x86emit` | the x86-64 back end over fib | roughly the ladder's `ir_to_x86` rung, minus the rung |
+
+`x86emit` is shaped differently from the other two tools and the difference is
+the back end's, not a shortcut: `codexir` and `zigemit` are filters because
+their entry points take a parsed chapter and return Text, while
+`x86-64-emit-cdx` needs the deck seal `emit_harness.py` builds around it. So its
+subject is compiled IN rather than read at run time, and what comes out is a
+program that emits one known subject's machine code.
 
 `./build.sh fib` on its own is the thing to run when you want to know whether
 the transport works at all: it builds the ring plug, compiles `WarmupFib`
@@ -56,6 +64,31 @@ Both read `/dev/stdin` and neither looks at `argv`, so the redirects are not
 style: `codexir prog.codex` aborts with a core dump, because the empty read
 takes the 10-byte CCE path. Output is on stderr because `print-text` is
 `std.debug.print` — a wart, not a design.
+
+## Checking that fib still works, three ways
+
+`fib_checkers/` holds one script per route. Three scripts rather than one with a
+flag, because the routes cost 0.1 seconds, eight seconds and a build apiece, and
+a flag would hide that from whoever is choosing.
+
+| script | route | needs |
+|---|---|---|
+| `verify_fib_with_zig.py` | native `codexir \| zigemit`, no guest | the two tools. **No checkout at all** — which is what building them bought |
+| `verify_fib_with_qemu.py` | seed + ring plug, two guests | a checkout, and it must be *the* one |
+| `verify_fib_with_x86.py` | mmap the emitted machine code and **call it** | `x86emit` |
+
+The x86 one is the only one that tests the code generator's actual output rather
+than a zig translation of the same program.
+
+**The QEMU one also diffs its IR against the native tool's**, which is where it
+stops being a smoke test — that comparison is what turned up the divergence in
+`FINDINGS.md`. A verifier that only checked `55` and `610` passes both ways
+round, because the wrong type does not change what fib computes.
+
+**And it refuses a `CODEX_ROOT` that is not the sandbox's tree.** This box
+exports one globally; the verifier used it silently on its first run and failed
+on a chapter that does not exist in that tree. It reads the sandbox's
+PROVENANCE now and refuses by name, with both shas.
 
 ## Where the artifacts go
 
