@@ -8,9 +8,13 @@ param(
 $ErrorActionPreference = 'Stop'
 $ladder = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path  # ladder-root-bootstrap: reaches the LADDER only; the checkout comes from ladder_root
 $repo = (& python3 (Join-Path $ladder 'roots.py') codex).Trim()
-# Output goes to the SANDBOX, never beside the script. A bundler that
-# writes next to itself is how a source repo grows a build directory.
-$here = if ($env:SANDBOX) { $env:SANDBOX } else { throw "no SANDBOX: nowhere to write" }
+# TWO DIRECTORIES, NOT ONE. $src is where the hand-written chapters live
+# (this repo); $out is the sandbox everything generated goes to. They used to
+# be one variable called $here, which is exactly the conflation that let a
+# source repo grow a build directory -- and it broke on the first run here,
+# looking for ZigPlugRing.codex in the sandbox.
+$src = $PSScriptRoot
+$out = if ($env:SANDBOX) { $env:SANDBOX } else { throw "no SANDBOX: nowhere to write" }
 
 . "$repo/codex/plugs/common/plug-build-lib.ps1"
 
@@ -45,7 +49,7 @@ foreach ($ch in @('codex/foreword/core/ListUtils.codex',
 # PhaseAllocator cites Codex chapter BootPaint, and a cite names a CHAPTER,
 # so the unit has to answer for one. BootPaintStubs.codex says why it is a
 # stub: the real chapter puts a WALL CLOCK in the truth arm.
-Add-PlugChapter -Lines $lines -Path (Join-Path $here 'BootPaintStubs.codex') -Quire 'Parsmi'
+Add-PlugChapter -Lines $lines -Path (Join-Path $src 'BootPaintStubs.codex') -Quire 'Parsmi'
 # LexStubs is NOT carried here, and after Update 54 it is down to one
 # definition: copy-sx-diag. This bundle has Syntax/SyntaxNodes.codex, which
 # is where the REAL one lives, and Core/PhaseAllocator.codex for the two the
@@ -54,7 +58,7 @@ Add-PlugChapter -Lines $lines -Path (Join-Path $here 'BootPaintStubs.codex') -Qu
 # name where each chapter sees its own is how a subject silently measures a
 # different function than the one it names. lex is the only rung that cannot
 # reach SyntaxNodes, so it is the only rung that still needs the stub.
-Add-PlugChapter -Lines $lines -Path (Join-Path $here $Harness) -Quire 'Parsmi'
+Add-PlugChapter -Lines $lines -Path (Join-Path $out $Harness) -Quire 'Parsmi'
 
 $preLines = Resolve-PlugForewords $lines
-Bundle-PlugSource -PreLines $preLines -Lines $lines -BundleSrc (Join-Path $here $OutName) -PlugName 'parse-subject'
+Bundle-PlugSource -PreLines $preLines -Lines $lines -BundleSrc (Join-Path $out $OutName) -PlugName 'parse-subject'

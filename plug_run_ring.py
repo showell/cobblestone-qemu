@@ -23,35 +23,41 @@ import sys
 
 import ring_compile
 from cce import decode
+from roots import out_root
 
 
-def refuse_stale_ringplug(here):
-    """A stale ring plug silently transpiles with yesterday's emitter -- it
-    did on 2026-08-19, stamping the pre-multibyte prelude onto freshly built
-    native tools. The bundle is deterministic, so re-bundle to a scratch name
-    and compare against the fingerprint ringplug_build.sh recorded; any
-    mismatch means the checkout's plug sources moved since the cdx was built."""
-    fp_file = here / "src" / "ringplug.cdx.fp"
+def refuse_stale_ringplug(out):
+    """A stale ring plug silently transpiles with yesterday's emitter -- it did
+    on 2026-08-19, stamping the pre-multibyte prelude onto freshly built native
+    tools. The bundle is deterministic, so re-bundle to a scratch name and
+    compare against the fingerprint the build recorded; any mismatch means the
+    checkout's plug sources moved since the cdx was built.
+
+    `out` is the SANDBOX. The plug and its fingerprint are artifacts and live
+    there; the bundler that reproduces them is source and lives in this repo.
+    """
+    fp_file = out / "ringplug.cdx.fp"
     if not fp_file.is_file():
-        raise SystemExit("no src/ringplug.cdx.fp; run src/ringplug_build.sh")
-    check = here / "src" / "ringplug-source-check.codex"
-    subprocess.run([os.path.expanduser("~/.local/pwsh/pwsh"), "-NoProfile",
-                    "-File", "./bundle_ringplug.ps1", "-OutName", check.name],
-                   cwd=here / "src", check=True, capture_output=True)
+        raise SystemExit(f"no {fp_file}; run build.sh, which builds the ring plug first")
+    check = out / "ringplug-source-check.codex"
+    bundler = pathlib.Path(__file__).resolve().parent / "subjects" / "bundle_ringplug.ps1"
+    pwsh = os.environ.get("PWSH", os.path.expanduser("~/.local/pwsh/pwsh"))
+    subprocess.run([pwsh, "-NoProfile", "-File", str(bundler), "-OutName", check.name],
+                   cwd=out, check=True, capture_output=True)
     got = hashlib.sha256(check.read_bytes()).hexdigest()
     check.unlink()
     if got != fp_file.read_text().strip():
-        raise SystemExit("src/ringplug.cdx is stale against the checkout's "
-                         "plug sources; run src/ringplug_build.sh")
+        raise SystemExit(f"{out / 'ringplug.cdx'} is stale against the checkout's "
+                         "plug sources; rebuild it")
 
 
 def run_ring_plug(ir_path, out_path, plug_cdx=None, mem_mb=None, timeout=1800):
     if mem_mb is None:
         mem_mb = ring_compile.MEM_MB
-    here = pathlib.Path(__file__).parent
+    out = out_root()
     if plug_cdx is None:
-        refuse_stale_ringplug(here)
-    plug_cdx = plug_cdx or str(here / "src" / "ringplug.cdx")
+        refuse_stale_ringplug(out)
+    plug_cdx = plug_cdx or str(out / "ringplug.cdx")
     ir = open(ir_path, "rb").read()
     if b"\x00" in ir:
         raise SystemExit(f"{ir_path}: contains NUL; read-serial-cce would stop early")

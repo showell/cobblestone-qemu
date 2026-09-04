@@ -30,9 +30,13 @@ param(
 $ErrorActionPreference = 'Stop'
 $ladder = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path  # ladder-root-bootstrap: reaches the LADDER only; the checkout comes from ladder_root
 $repo = (& python3 (Join-Path $ladder 'roots.py') codex).Trim()
-# Output goes to the SANDBOX, never beside the script. A bundler that
-# writes next to itself is how a source repo grows a build directory.
-$here = if ($env:SANDBOX) { $env:SANDBOX } else { throw "no SANDBOX: nowhere to write" }
+# TWO DIRECTORIES, NOT ONE. $src is where the hand-written chapters live
+# (this repo); $out is the sandbox everything generated goes to. They used to
+# be one variable called $here, which is exactly the conflation that let a
+# source repo grow a build directory -- and it broke on the first run here,
+# looking for ZigPlugRing.codex in the sandbox.
+$src = $PSScriptRoot
+$out = if ($env:SANDBOX) { $env:SANDBOX } else { throw "no SANDBOX: nowhere to write" }
 
 . "$repo/codex/plugs/common/plug-build-lib.ps1"
 
@@ -172,9 +176,9 @@ if ($WithDriver) {
         Add-PlugChapter -Lines $lines -Path (Join-Path $repo $_) -Quire 'Parsmi'
     }
 }
-$bootPaintPath = if ($BootPaint -match '/') { Join-Path $repo $BootPaint } else { Join-Path $here $BootPaint }
+$bootPaintPath = if ($BootPaint -match '/') { Join-Path $repo $BootPaint } else { Join-Path $src $BootPaint }
 Add-PlugChapter -Lines $lines -Path $bootPaintPath -Quire 'Parsmi'
-Add-PlugChapter -Lines $lines -Path (Join-Path $here $Harness) -Quire 'Parsmi'
+Add-PlugChapter -Lines $lines -Path (Join-Path $out $Harness) -Quire 'Parsmi'
 
 # There used to be a rename of deck-record to subj-deck-record here. It was
 # right when it was written: the seed's emitter hijacked any 1-arg call
@@ -209,4 +213,4 @@ for ($i = 0; $i -lt $lines.Count; $i++) {
     }
 }
 $preLines = Resolve-PlugForewords $lines
-Bundle-PlugSource -PreLines $preLines -Lines $lines -BundleSrc (Join-Path $here $OutName) -PlugName $PlugName
+Bundle-PlugSource -PreLines $preLines -Lines $lines -BundleSrc (Join-Path $out $OutName) -PlugName $PlugName

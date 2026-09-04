@@ -13,9 +13,13 @@ param(
 $ErrorActionPreference = 'Stop'
 $ladder = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path  # ladder-root-bootstrap: reaches the LADDER only; the checkout comes from ladder_root
 $repo = (& python3 (Join-Path $ladder 'roots.py') codex).Trim()
-# Output goes to the SANDBOX, never beside the script. A bundler that
-# writes next to itself is how a source repo grows a build directory.
-$here = if ($env:SANDBOX) { $env:SANDBOX } else { throw "no SANDBOX: nowhere to write" }
+# TWO DIRECTORIES, NOT ONE. $src is where the hand-written chapters live
+# (this repo); $out is the sandbox everything generated goes to. They used to
+# be one variable called $here, which is exactly the conflation that let a
+# source repo grow a build directory -- and it broke on the first run here,
+# looking for ZigPlugRing.codex in the sandbox.
+$src = $PSScriptRoot
+$out = if ($env:SANDBOX) { $env:SANDBOX } else { throw "no SANDBOX: nowhere to write" }
 
 . "$repo/codex/plugs/common/plug-build-lib.ps1"
 
@@ -38,7 +42,7 @@ foreach ($zp in (Get-Content (Join-Path $PSScriptRoot '..' 'zig_plug_pages.txt')
                  Where-Object { $_.Trim() -and -not $_.Trim().StartsWith('#') })) {
     Add-PlugChapter -Lines $lines -Path (Join-Path $repo "codex/plugs/zig/$($zp.Trim()).codex") -Quire 'Zig'
 }
-Add-PlugChapter -Lines $lines -Path (Join-Path $here $Body) -Quire 'Zig'
+Add-PlugChapter -Lines $lines -Path (Join-Path $src $Body) -Quire 'Zig'
 
 $preLines = Resolve-PlugForewords $lines
-Bundle-PlugSource -PreLines $preLines -Lines $lines -BundleSrc (Join-Path $here $OutName) -PlugName $PlugName
+Bundle-PlugSource -PreLines $preLines -Lines $lines -BundleSrc (Join-Path $out $OutName) -PlugName $PlugName

@@ -8,7 +8,6 @@ import subprocess
 import sys
 import time
 
-import compute_lock
 from roots import codex_root
 CODEX = codex_root()
 
@@ -42,10 +41,10 @@ def launch(kernel, mem_mb=None, nic=False, extra_args=()):
     # The compute lock is taken HERE and, for guests, nowhere else: this
     # is the only line in the tree that runs qemu, so an entry point
     # cannot start a guest without asking. It was 22 scattered
-    # take_compute_lock calls until 2026-08-25, seven entry points had
-    # quietly never called it, and the mechanism had refused more real
-    # runs than the hazard ever cost us.
-    compute_lock.take()
+    # NO COMPUTE LOCK. It served us well and was never rock solid, so it is
+    # gone rather than half-trusted (Steve, 2026-09-04): we run one guest at a
+    # time by being careful, and we will re-add something when we get burned.
+    # A lock that is usually right is a lock people stop reading the output of.
     if mem_mb is None:
         mem_mb = MEM_MB
     # nic: only for plug kernels that drive the NE2K (the seed has no NIC

@@ -49,7 +49,7 @@ print(f'blob: {len(src)} bytes')"
     # KEEP THE WHOLE OUTPUT. Piping this through a grep for "error|SIZE"
     # discards every other reason a compile can fail, and the two that actually
     # happen say neither word: a host with no CODEX_LADDER_VENUE, and
-    # compute_lock refusing beside a foreign guest.
+    # a guest that will not start.
     python3 -u "$T/ring_compile.py" "$S/ringplug-cdx.blob" "$S/ringplug.cdx" \
         > "$S/ringplug-compile.log" 2>&1
     grep -E "error|SIZE" "$S/ringplug-compile.log" | head -10 || true

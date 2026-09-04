@@ -10,7 +10,6 @@ a machine. It is the only arm that can answer questions about memory, the deck,
 
 ```sh
 export CODEX_ROOT=~/showell_repos/u56-candidate-friday   # the checkout to build from
-export CODEX_LADDER_VENUE=droplet                        # this host is a compute venue
 ./build.sh all
 ```
 
@@ -23,7 +22,10 @@ That builds three subjects, cheapest first, stopping at the first failure:
 | `codexir` | the compiler, as a native tool: `.codex` → `.ir` | |
 
 `./build.sh fib` on its own is the thing to run when you want to know whether
-the transport works at all. It is minutes; the other two are considerably more.
+the transport works at all: it builds the ring plug, compiles `WarmupFib`
+through the seed under QEMU, transpiles that IR through the plug under QEMU, and
+links a native binary that prints `55` and `610`. Minutes. The other two are
+considerably more.
 
 **What you get, and why it is worth an hour of QEMU.** After a build,
 
@@ -80,9 +82,11 @@ are each a recorded ouch rather than a precaution:
   input. One red means nothing. Retry before concluding.
 - memory bounds, added after an emitted binary ballooned past 3 GB and livelocked
   the whole host twice
-- `compute_lock.py`: one compute job per host, taken at the door, because a
-  `zig run` started beside a guest is enough to stall it
-- a host with no `CODEX_LADDER_VENUE` refuses before the lock
+**There is no compute lock.** There was one, it served its purpose, and it was
+never rock solid — so it is gone rather than half-trusted. One guest at a time is
+a thing we do by being careful. A `zig run` started beside a guest is still
+enough to stall it; if that burns us again we will add something back, and it
+will be something we believe.
 
 ## What is deliberately not here
 

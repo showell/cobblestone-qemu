@@ -23,6 +23,12 @@
 set -euo pipefail
 T="$(cd "$(dirname "$0")" && pwd)"
 
+# Python must not write .pyc beside the source. There are no .gitignore rules
+# here, so __pycache__/ would show up as untracked after every build -- and a
+# status that is dirty every time is a status nobody reads. Eliminated rather
+# than ignored.
+export PYTHONDONTWRITEBYTECODE=1
+
 # Named rather than assumed on PATH: neither is, on this box, and a bare `pwsh`
 # fails as "command not found" three steps into a build that has already booted
 # a guest.
@@ -33,7 +39,6 @@ export PWSH ZIG
 [ -x "$ZIG" ]  || { echo "no zig at $ZIG; set ZIG" >&2; exit 2; }
 
 : "${CODEX_ROOT:?set CODEX_ROOT to the Codex checkout to build from}"
-: "${CODEX_LADDER_VENUE:?set CODEX_LADDER_VENUE -- a host without it is not a compute venue}"
 CODEX_SHA="$(git -C "$CODEX_ROOT" rev-parse HEAD)"
 
 want="${1:-all}"
