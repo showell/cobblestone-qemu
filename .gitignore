@@ -1,0 +1,11 @@
+# No rules, on purpose.
+#
+# The repository this was carved out of grew to 347 MB, of which 343 MB was
+# generated output written beside the scripts that produced it -- invisible for
+# weeks because .gitignore covered for it, and `git status` was clean the whole
+# time it accumulated.
+#
+# Everything this repo generates goes to $SANDBOX. So anything that turns up
+# here is a script writing where it should not, and an untracked file in
+# `git status` is exactly the alarm you want. Adding a rule here would silence
+# the one thing that tells you the rule is being broken.
