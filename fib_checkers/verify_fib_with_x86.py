@@ -24,7 +24,7 @@ zig = os.environ.get('ZIG', os.path.expanduser('~/zig-0.16.0/zig'))
 
 work = S / 'fib_checkers'
 work.mkdir(exist_ok=True)
-dump = work / 'x86-fib.cdx'
+dump = work / 'dump.cdx'   # f3_run reads this name from its cwd
 runner = work / 'f3_run'
 
 # The emitter prints to stderr, as every Codex program here does.
@@ -32,15 +32,19 @@ r = c.run([str(x86emit)])
 out = r.stderr or r.stdout
 if not out.strip():
     c.fail(f'x86emit printed nothing (rc={r.returncode})')
-dump.write_text(out)
+dump.write_text(c.dump_body(out))
 
-if not runner.exists():
-    b = c.run([zig, 'build-exe', str(c.REPO / 'fib_checkers' / 'f3_run.zig'),
-               f'-femit-bin={runner}'], cwd=work)
+# Rebuild when the source is newer, never merely "if missing": a failed build
+# leaves a partial binary behind, and skipping on existence kept one -- the next
+# run died with "Exec format error" on it rather than rebuilding.
+src_zig = c.REPO / 'fib_checkers' / 'f3_run.zig'
+if not runner.exists() or runner.stat().st_mtime < src_zig.stat().st_mtime:
+    runner.unlink(missing_ok=True)
+    b = c.run([zig, 'build-exe', str(src_zig), f'-femit-bin={runner}'], cwd=work)
     if b.returncode:
         c.fail(f'building f3_run failed:\n{b.stderr[:400]}')
 
-got = c.run([str(runner), str(dump)])
+got = c.run([str(runner)], cwd=work)
 report = (got.stdout + got.stderr).strip()
 if got.returncode != 0 or 'F3 PASS' not in report:
     c.fail(f'executing the emitted machine code:\n{report[:600]}')

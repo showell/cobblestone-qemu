@@ -77,6 +77,21 @@ def fail(why):
     sys.exit(1)
 
 
+def dump_body(out):
+    """An emitter's output with the harness banner trimmed off.
+
+    The harness prints `=== subject <name> ===` before the dump proper, because
+    its unit can carry several subjects. Both x86 checkers hit this and both
+    would otherwise carry their own slice; the ladder had a whole
+    `split_truth.py` for the same job because its unit really did carry two.
+    """
+    lines = out.splitlines(keepends=True)
+    start = next((i for i, l in enumerate(lines) if l.startswith('check-errors')), None)
+    if start is None:
+        fail(f'no `check-errors` line -- this is not an emitter dump:\n{out[:300]}')
+    return ''.join(lines[start:])
+
+
 def check(got, route, extra=''):
     """got is the program's output. Every verifier ends here so that a pass and
     a failure are printed the same way by all three."""

@@ -112,6 +112,12 @@ fn parse(gpa: std.mem.Allocator, path: []const u8, text: []const u8) !Dump {
     if (p.count("check-errors") != 0) die("{s}: subject had check errors", .{path});
     _ = p.count("ir-defs");
     if (p.count("emit-errors") != 0) die("{s}: emission put errors in the bag", .{path});
+    // THE HARNESS GREW TWO LINES SINCE THIS PARSER WAS WRITTEN: an `emit-diags`
+    // count and a `.` that closes the summary. Consumed rather than tolerated
+    // by skipping ahead, so that a THIRD new line is a loud parse failure here
+    // and not something silently swallowed.
+    _ = p.count("emit-diags");
+    p.expect(".");
     const header_len = p.count("header-len");
     const content_len = p.count("content-len");
     const tail_len = p.count("tail-len");
@@ -218,15 +224,13 @@ pub fn main() !void {
     var threaded: std.Io.Threaded = .init(gpa, .{});
     defer threaded.deinit();
     const io = threaded.io();
-    // PATHS COME FROM argv. This read two hard-coded ladder filenames, which
-    // tied it to one rung's output names; it takes any number of dumps now and
-    // runs every one. Two dumps from two arms is still the interesting call --
-    // running only one leaves open which side was being trusted.
-    const args = try std.process.argsAlloc(gpa);
-    defer std.process.argsFree(gpa, args);
-    if (args.len < 2) die("usage: f3_run <dump.cdx> [more dumps...]", .{});
+    // ONE FIXED NAME, WRITTEN BY THE CALLER. This read two hard-coded ladder
+    // filenames; it reads one neutral one now, and fib_checkers writes the dump
+    // there. argv would be better and was tried -- std.process.argsAlloc is gone
+    // in this zig and the replacement was not worth hunting for a path that the
+    // only caller already controls.
     var ok = true;
-    for (args[1..]) |path| {
+    for ([_][]const u8{"dump.cdx"}) |path| {
         ok = try runOne(io, gpa, path) and ok;
     }
     if (!ok) die("the emitted code computed the wrong answers", .{});

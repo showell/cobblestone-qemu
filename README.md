@@ -76,9 +76,20 @@ a flag would hide that from whoever is choosing.
 | `verify_fib_with_zig.py` | native `codexir \| zigemit`, no guest | the two tools. **No checkout at all** — which is what building them bought |
 | `verify_fib_with_qemu.py` | seed + ring plug, two guests | a checkout, and it must be *the* one |
 | `verify_fib_with_x86.py` | mmap the emitted machine code and **call it** | `x86emit` |
+| `verify_fib_by_booting.py` | reassemble the whole binary and **boot it** | `x86emit`, a checkout, QEMU |
 
-The x86 one is the only one that tests the code generator's actual output rather
-than a zig translation of the same program.
+The two x86 ones are the only checks in the toolchain that test the code
+generator's actual output rather than a zig translation of the same program, and
+they are not the same check. Calling a carved-out function proves the
+instructions are real; it says nothing about the binary around them -- the
+header, the entry point, `__start`, the runtime init, the serial path. **A code
+generator can emit a perfect function inside a file that will not start.**
+Booting is the stronger claim and the slower one.
+
+Both descend from the ladder's `f3_run.zig` and `f4_boot.py`, whose names
+encoded a position in a brainstorming sequence -- F1 fib through the front end,
+F2 through the x86 back end, F3 run it, F4 boot it -- that stopped existing when
+F1 and F2 dissolved into rungs. They are named for their question now.
 
 **The QEMU one also diffs its IR against the native tool's**, which is where it
 stops being a smoke test — that comparison is what turned up the divergence in
