@@ -27,7 +27,16 @@ ring_transpile() {  # <ir> <zig> <log>   -- one guest
 # yesterday's emitter onto today's tools. Rebuild before the first build_one;
 # plug_run_ring.py refuses a stale one as the backstop. It is a CALL and not a
 # line in this file because sourcing a library must not start a guest.
+# Every step says how long it took, in the log, next to what it did. A build
+# here is hour-class and the first question anybody asks afterwards is which
+# part of it was the hour.
+say_elapsed() {  # <label> <start-epoch>
+    local s=$(( $(date +%s) - $2 ))
+    printf '############ %s -- %dm%02ds\n' "$1" $((s/60)) $((s%60))
+}
+
 ring_plug_fresh() {
+    local t0=$(date +%s)
     echo "############ ring plug"
     cd "$S"
     rm -f ringplug-source.codex
@@ -58,11 +67,13 @@ print(f'blob: {len(src)} bytes')"
         tail -15 "$S/ringplug-compile.log" | sed 's/^/    /'; return 1; }
     printf '%s\n' "$want" > "$S/ringplug.cdx.fp"
     echo "ringplug.cdx built ($(echo "$want" | head -c 12))"
+    say_elapsed "ring plug" "$t0"
 }
 
 # <name> <generator or ""> <bundler or ""> <bundled subject filename>
 build_one() {
     local name=$1 gen=$2 bundle=$3 subject=$4
+    local t0=$(date +%s) tp
     echo "############ $name"
     cd "$S"
     [ -n "$gen" ] && python3 "$T/subjects/$gen"
@@ -79,14 +90,18 @@ open('$S/$name-ir.blob','wb').write(b'IR-CCE decks=172\n' + src + b'\x04')
 print(f'blob: {len(src)} bytes of source')"
 
     echo "--- compiling $name to IR (seed, QEMU)"
+    tp=$(date +%s)
     rm -f "$S/$name.ir"
     seed_compile "$S/$name-ir.blob" "$S/$name.ir"
     [ -s "$S/$name.ir" ] || { echo "COMPILE FAILED: no $name.ir"; return 1; }
+    say_elapsed "$name: compile to IR" "$tp"
 
     echo "--- transpiling $name through the plug (QEMU)"
+    tp=$(date +%s)
     rm -f "$S/$name.zig"
     ring_transpile "$S/$name.ir" "$S/$name.zig" "$S/$name.transport.log" \
         || { echo "TRANSPORT FAILED ($name):"; tail -5 "$S/$name.transport.log"; return 1; }
+    say_elapsed "$name: transpile" "$tp"
 
     # A marker means the plug could not translate a CONSTRUCT, and the build must
     # not proceed to a binary quietly missing it. The prelude's own comptime
@@ -104,5 +119,5 @@ print(f'blob: {len(src)} bytes of source')"
     echo "--- building the native binary"
     "$ZIG" build-exe "$S/$name.zig" -femit-bin="$S/$name"
     ls -la "$S/$name" | awk '{print "    " $NF, $5, "bytes"}'
-    echo "############ $name built"
+    say_elapsed "$name BUILT" "$t0"
 }
