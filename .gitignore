@@ -9,3 +9,11 @@
 # here is a script writing where it should not, and an untracked file in
 # `git status` is exactly the alarm you want. Adding a rule here would silence
 # the one thing that tells you the rule is being broken.
+
+# STILL NO RULES. Two hours after this file was written I ran `git add -A`
+# without reading the status and committed five .pyc files -- the exact thing
+# the empty ignore list exists to surface. The alarm worked; I bypassed it.
+#
+# The fix is not a rule. It is `python3 -B` in the verifiers' shebangs and
+# PYTHONDONTWRITEBYTECODE in build.sh, so the files are never written, plus
+# reading `git status` before `git add`.

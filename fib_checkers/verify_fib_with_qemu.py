@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S python3 -B
 """Does fib come out right through BARE METAL? Two guests, about eight seconds.
 
     fib.codex --(seed, QEMU)--> IR --(ring plug, QEMU)--> zig --> a binary

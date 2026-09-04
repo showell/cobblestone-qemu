@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S python3 -B
 """Does fib come out right as MACHINE CODE? The emitted bytes are executed.
 
 The other two verifiers run a binary that zig linked. This one takes the x86-64

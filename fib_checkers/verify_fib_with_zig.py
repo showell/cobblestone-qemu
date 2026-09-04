@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S python3 -B
 """Does fib come out right through the NATIVE chain? No QEMU at all.
 
     codexir < fib.codex 2> fib.ir && zigemit < fib.ir 2> fib.zig && zig build-exe
