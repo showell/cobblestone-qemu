@@ -1,6 +1,6 @@
 # What building on bare metal has turned up
 
-## 1. The plug-built compiler types EVERY comparison `error`, where bare metal says `boolean`
+## 1. SENT as [issue 126](https://github.com/damiant3/Cobblestone/issues/126). The plug-built compiler types EVERY comparison `error`, where bare metal says `boolean`
 
 **Found 2026-09-04, the first day this repo existed, by diffing the IR the two
 arms produce for the same file.**
@@ -30,6 +30,23 @@ alarming direction, which is why it sat parked. `ast/plug_arm_lib.sh:70` runs
 `fib`, which contains exactly one comparison, so "is it this comparison or all
 of them" was unanswerable. It is all of them, universally, and the test costs
 0.09 seconds against the rung's four minutes.
+
+**IT DOES NOT CHANGE THE EMITTED PROGRAM, on this evidence.** `fib`'s single
+comparison is typed `error` by the hosted compiler, and the zig emitted from
+that IR is BYTE-IDENTICAL to the zig emitted from bare metal's correctly-typed
+IR. So the wrong type is inert for code generation here. Stated rather than
+implied, because the alternative is claiming severity we have not shown.
+
+PR 117's history is the argument for not shrugging anyway: there an `ErrorTy`
+binding cascaded -- `lower` had no parameter type, `n + n` became an error node,
+nine rungs went red off one cause. A type that is wrong but currently unread is
+one consumer away from mattering.
+
+**It is a SECOND SITE, not a regression.** PR 117's `hosted-kind` guard is in
+the tree these measurements come from, and the symptom it fixed is gone: top-
+level bindings type correctly. What remains is the same signature on comparison
+EXPRESSIONS. We have not located the site, and that is a hypothesis rather than
+a finding.
 
 **Reproduce:**
 
