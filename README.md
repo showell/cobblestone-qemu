@@ -24,8 +24,22 @@ That builds three subjects, cheapest first, stopping at the first failure:
 `./build.sh fib` on its own is the thing to run when you want to know whether
 the transport works at all: it builds the ring plug, compiles `WarmupFib`
 through the seed under QEMU, transpiles that IR through the plug under QEMU, and
-links a native binary that prints `55` and `610`. Minutes. The other two are
-considerably more.
+links a native binary that prints `55` and `610`.
+
+**Measured on the ladder droplet, 2026-09-04, against `u56-candidate`:**
+
+| step | | |
+|---|---|---|
+| ring plug | | 23 s |
+| **fib** | 4 s compile, 3 s transpile | **7 s** |
+| **zigemit** | 25 s compile, 14 s transpile | **41 s** |
+| **codexir** | 2 m 46 s compile, 1 m 52 s transpile | **4 m 43 s** |
+| `./build.sh all` | | **~6 minutes** |
+
+The whole sandbox is 52 MB. `codexir` is the expensive one because its bundled
+subject is 2.6 MB of source and its IR is 9.5 MB; everything else is small.
+
+Six minutes, not the hour this was braced for.
 
 **What you get, and why it is worth an hour of QEMU.** After a build,
 
@@ -34,7 +48,9 @@ codexir <prog.codex 2>prog.ir && zigemit <prog.ir 2>prog.zig && zig build-exe pr
 ```
 
 is three native processes and no guest. Building these two tools is how QEMU
-leaves the pipeline for everything downstream.
+leaves the pipeline for everything downstream, and the difference is not
+marginal: **`fib` takes 7 seconds through QEMU and 0.09 seconds through the
+native chain**, and the emitted zig is byte-identical either way.
 
 Both read `/dev/stdin` and neither looks at `argv`, so the redirects are not
 style: `codexir prog.codex` aborts with a core dump, because the empty read
