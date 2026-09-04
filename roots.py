@@ -53,9 +53,15 @@ def out_root():
     return path
 
 
-CODEX = codex_root() if os.environ.get('CODEX_ROOT') else None
 
 if __name__ == '__main__':
     import sys
     which = sys.argv[1] if len(sys.argv) > 1 else 'codex'
-    print(codex_root() if which == 'codex' else out_root())
+    try:
+        print(codex_root() if which == 'codex' else out_root())
+    except RootError as why:
+        # A refusal is a message, not a stack trace. The shell and PowerShell
+        # callers show what this prints, and a traceback buries the one line
+        # that says what to do under seven that do not.
+        print(f'REFUSING: {why}', file=sys.stderr)
+        sys.exit(2)

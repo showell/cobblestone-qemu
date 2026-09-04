@@ -31,7 +31,7 @@ ring_plug_fresh() {
     echo "############ ring plug"
     cd "$S"
     rm -f ringplug-source.codex
-    out=$(pwsh -NoProfile -File "$T/subjects/bundle_ringplug.ps1" 2>&1) \
+    out=$("$PWSH" -NoProfile -File "$T/subjects/bundle_ringplug.ps1" 2>&1) \
         || { printf '%s\n' "$out" | tail -5; return 1; }
     printf '%s\n' "$out" | tail -1
     python3 -c "
@@ -69,7 +69,7 @@ build_one() {
 
     if [ -n "$bundle" ]; then
         rm -f "$subject"
-        pwsh -NoProfile -File "$T/subjects/$bundle" | tail -1
+        "$PWSH" -NoProfile -File "$T/subjects/$bundle" | tail -1
         [ -s "$subject" ] || { echo "BUNDLE FAILED: no $subject"; return 1; }
     fi
 
@@ -102,7 +102,7 @@ print(f'blob: {len(src)} bytes of source')"
     fi
 
     echo "--- building the native binary"
-    zig build-exe "$S/$name.zig" -femit-bin="$S/$name"
+    "$ZIG" build-exe "$S/$name.zig" -femit-bin="$S/$name"
     ls -la "$S/$name" | awk '{print "    " $NF, $5, "bytes"}'
     echo "############ $name built"
 }

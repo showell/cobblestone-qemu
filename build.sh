@@ -23,6 +23,15 @@
 set -euo pipefail
 T="$(cd "$(dirname "$0")" && pwd)"
 
+# Named rather than assumed on PATH: neither is, on this box, and a bare `pwsh`
+# fails as "command not found" three steps into a build that has already booted
+# a guest.
+PWSH="${PWSH:-$HOME/.local/pwsh/pwsh}"
+ZIG="${ZIG:-$HOME/zig-0.16.0/zig}"
+export PWSH ZIG
+[ -x "$PWSH" ] || { echo "no pwsh at $PWSH; set PWSH" >&2; exit 2; }
+[ -x "$ZIG" ]  || { echo "no zig at $ZIG; set ZIG" >&2; exit 2; }
+
 : "${CODEX_ROOT:?set CODEX_ROOT to the Codex checkout to build from}"
 : "${CODEX_LADDER_VENUE:?set CODEX_LADDER_VENUE -- a host without it is not a compute venue}"
 CODEX_SHA="$(git -C "$CODEX_ROOT" rev-parse HEAD)"
