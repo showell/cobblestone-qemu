@@ -21,7 +21,6 @@ import sys
 sys.dont_write_bytecode = True
 
 import os
-import re
 import subprocess
 import sys
 
@@ -64,20 +63,14 @@ if native.exists():
     nat = work / 'qemu-fib-native.ir'
     with open(c.FIB, 'rb') as f, open(nat, 'wb') as o:
         subprocess.run([str(native)], stdin=f, stdout=subprocess.DEVNULL, stderr=o)
-    # THE TWO ROADS NAME THE CHAPTER DIFFERENTLY, and that is not a compiler
-    # difference. A whole-unit compile names it "Program"; codexir reading the
-    # file uses the chapter's own name. Comparing raw makes this check DIFFER
-    # on every run forever, which costs it the one job it has -- a permanently
-    # red signal is as unreadable as a permanently green one. Only the chapter
-    # line is normalised, and anything else that differs is reported.
-    head = re.compile(r'^\(chapter "[^"]*"')
-    a = [head.sub('(chapter', x) for x in decode(ir.read_bytes()).splitlines()]
-    b2 = [head.sub('(chapter', x) for x in nat.read_text().splitlines()]
-    if a == b2:
-        extra = f'  (IR identical to the native tool, {len(a)} lines)'
+    bm = decode(ir.read_bytes())
+    if bm == nat.read_text():
+        extra = '  (IR identical to the native tool)'
     else:
+        a = bm.splitlines()
+        b2 = nat.read_text().splitlines()
         first = next((i for i, (x, y) in enumerate(zip(a, b2)) if x != y), None)
-        extra = f'  (IR DIFFERS from the native tool, first at line {first + 1 if first is not None else len(a) + 1})'
+        extra = f'  (IR DIFFERS from the native tool, first at line {first + 1 if first is not None else "?"})'
 
 got = c.run([str(exe)])
 sys.exit(c.check(got.stdout + got.stderr, 'bare metal (seed + ring plug)', extra))

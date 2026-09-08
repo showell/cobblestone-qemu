@@ -665,9 +665,17 @@ def frontend_source(src, passes, scan=True, deck_bytes=None, resolve=True, lift=
     in let passed = run-ir-pipeline default-ir-pipeline ir-raw False
     in let ir0 = passed.chapter""" if passes else
         f"let (ir0, lower-keep-end) = {lower_here}")
+    # THE MODULE NAME IS "Program", which is the driver's own literal:
+    # opening.codex passes it at every compile-frontend call site, and it
+    # reaches desugar-document through compile-checked. It becomes the IR's
+    # `(chapter ...)`, so a harness passing the document's own title emits a
+    # chapter name no driver ever produces -- and the bare-metal road, which
+    # goes through the real driver, then disagrees with this one on line 1 of
+    # every unit. codex-zig-transpiler's CodexIrHarness passes the literal and
+    # build_codexir.py asserts it.
     return deck_prologue(deck_bytes) + head + f"""
     in let doc = parse-document (make-parse-state (toks.tokens) {src}) 0
-    in let dr = desugar-document {src} doc (doc.chapter-title) 0
+    in let dr = desugar-document {src} doc "Program" 0
     in let ch0 = dr.dr-chapter
     in let ch = scope-achapter ch0 colliding assignments 0
     in let rr = resolve-chapter ch colliding assignments 0
