@@ -1,4 +1,4 @@
-# codex-qemu
+# cobblestone-qemu
 
 **Run Codex on real x86 and tell me what came out.**
 
