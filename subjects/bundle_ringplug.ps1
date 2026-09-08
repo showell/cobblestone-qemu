@@ -34,12 +34,11 @@ foreach ($decl in @('codex/compiler/Core/Name.codex',
 }
 Add-PlugChapter -Lines $lines -Path (Join-Path $repo 'codex/plugs/common/PlugTypes.codex') -Quire 'Zig'
 Add-PlugChapter -Lines $lines -Path (Join-Path $repo 'codex/plugs/common/IRTextParser.codex') -Quire 'Zig'
-# EVERY PAGE OF Chapter: Zig Emitter, READ FROM THE CHECKOUT. A bundle carrying
-# only the first page reports 17 undefined names, each defined on a page nobody
-# asked for -- and a hand-kept list of the pages is a second copy that goes
-# stale on exactly the release you most want to measure. The chapter's own
-# `Page N of M` footers are the order; zig_plug_pages.py refuses rather than
-# guesses if they do not describe a whole chapter.
+# EVERY PAGE OF Chapter: Zig Emitter, READ FROM THE CHECKOUT. A bundle missing
+# a page reports every definition on it as undefined, so the page set must come
+# from the checkout being bundled rather than from a list kept here. The
+# chapter's `Page N of M` footers are the order; zig_plug_pages.py refuses
+# rather than guesses if they do not describe a whole chapter.
 $pages = & python3 (Join-Path $ladder 'zig_plug_pages.py')
 if ($LASTEXITCODE -ne 0) { throw "could not read the pages of Chapter: Zig Emitter" }
 foreach ($zp in $pages) {

@@ -1,19 +1,16 @@
 #!/usr/bin/env python3
 """The pages of Chapter: Zig Emitter, in order, read from the checkout.
 
-This used to be a hand-maintained list, and Update 56 is what it cost. Upstream
-carried the emitter as four files on our u56-candidate branch and as one file on
-their own master; the list named the four, so the bundle asked for
-`ZigEmitterExpressions.codex` and pwsh died on a missing file three steps into a
-build that had already booted a guest.
+Every bundler needs the chapter's pages, and the chapter already names them: a
+chapter spanning k files foots every page with `Page N of M` (CDX3004), and a
+single-page chapter foots `Page 1`. That footer is the order, written by the
+author of the chapter, so no second copy is kept here to disagree with it --
+and the page count differs between checkouts, so a copy is wrong for all but
+one of them.
 
-A chapter that spans k files foots every page with `Page N of M` (CDX3004), and
-a single-page chapter foots `Page 1`. That footer is the order, written by the
-author of the chapter, so it does not need a second copy over here that can
-disagree with it. Nothing is guessed: a gap in the numbering, a disagreement
-about M, or two files claiming one page is a REFUSAL, because a bundle missing a
-page reads as a pile of undefined names inside the guest rather than an error
-here -- 17 of them, all naming `emit-zig-expr`, measured 2026-09-03.
+Nothing is guessed. A gap in the numbering, a disagreement about M, or two
+files claiming one page is a REFUSAL: a bundle missing a page reads as a pile
+of undefined names inside the guest rather than an error out here.
 """
 
 import pathlib
