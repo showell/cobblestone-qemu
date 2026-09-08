@@ -34,12 +34,15 @@ foreach ($decl in @('codex/compiler/Core/Name.codex',
 }
 Add-PlugChapter -Lines $lines -Path (Join-Path $repo 'codex/plugs/common/PlugTypes.codex') -Quire 'Zig'
 Add-PlugChapter -Lines $lines -Path (Join-Path $repo 'codex/plugs/common/IRTextParser.codex') -Quire 'Zig'
-# EVERY PAGE OF Chapter: Zig Emitter, from the one list the bash bundlers also
-# read. It was this single line when the emitter was one file; the emitter is
-# four files now and a bundle carrying only the first reports 17 undefined
-# names, each of them defined on a page that was never asked for.
-foreach ($zp in (Get-Content (Join-Path $PSScriptRoot '..' 'zig_plug_pages.txt') |
-                 Where-Object { $_.Trim() -and -not $_.Trim().StartsWith('#') })) {
+# EVERY PAGE OF Chapter: Zig Emitter, READ FROM THE CHECKOUT. A bundle carrying
+# only the first page reports 17 undefined names, each defined on a page nobody
+# asked for -- and a hand-kept list of the pages is a second copy that goes
+# stale on exactly the release you most want to measure. The chapter's own
+# `Page N of M` footers are the order; zig_plug_pages.py refuses rather than
+# guesses if they do not describe a whole chapter.
+$pages = & python3 (Join-Path $ladder 'zig_plug_pages.py')
+if ($LASTEXITCODE -ne 0) { throw "could not read the pages of Chapter: Zig Emitter" }
+foreach ($zp in $pages) {
     Add-PlugChapter -Lines $lines -Path (Join-Path $repo "codex/plugs/zig/$($zp.Trim()).codex") -Quire 'Zig'
 }
 Add-PlugChapter -Lines $lines -Path (Join-Path $src $Body) -Quire 'Zig'
