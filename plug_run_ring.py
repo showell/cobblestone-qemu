@@ -19,7 +19,13 @@ import os
 import pathlib
 import re
 import subprocess
+
+# This repository has no ignore rules, so an imported module must not leave a
+# __pycache__ behind. `-B` in a shebang covers ./name.py only, and every caller
+# here runs `python3 name.py`, so the guard belongs in the file and must be set
+# before the first local import.
 import sys
+sys.dont_write_bytecode = True
 
 import ring_compile
 from cce import decode

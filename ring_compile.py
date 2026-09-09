@@ -14,9 +14,15 @@ import os
 import pathlib
 import re
 import socket
-import sys
 import bisect
 import time
+
+# This repository has no ignore rules, so an imported module must not leave a
+# __pycache__ behind. `-B` in a shebang covers ./name.py only, and every caller
+# here runs `python3 name.py`, so the guard belongs in the file and must be set
+# before the first local import.
+import sys
+sys.dont_write_bytecode = True
 
 import codex_vm
 from roots import codex_root
