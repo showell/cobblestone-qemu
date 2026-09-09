@@ -14,5 +14,19 @@ PORT="${PORT:-9202}"
 echo "serving $CODEX_ROOT on 127.0.0.1:$PORT"
 echo "tunnel from your machine:  ssh -N -L $PORT:localhost:$PORT steve@143.244.172.148"
 echo "then open in Firefox:      http://localhost:$PORT/apps/gpushow/web/index.html"
-cd "$CODEX_ROOT"
-exec python3 -m http.server "$PORT" --bind 127.0.0.1
+# NO-STORE ON EVERY RESPONSE. This is an eye-test server: a kernel you just
+# regenerated must show on the next reload, not a copy Firefox cached. Plain
+# `http.server` sends only Last-Modified, and Firefox served a stale
+# GlobeKernels.wgsl from a JS fetch() straight through a hard reload because of
+# it. So every response says do-not-cache.
+exec python3 - "$PORT" "$CODEX_ROOT" <<'PY'
+import sys, functools, http.server
+port, root = int(sys.argv[1]), sys.argv[2]
+class H(http.server.SimpleHTTPRequestHandler):
+    def end_headers(self):
+        self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate')
+        self.send_header('Pragma', 'no-cache')
+        super().end_headers()
+http.server.HTTPServer(('127.0.0.1', port),
+                       functools.partial(H, directory=root)).serve_forever()
+PY
