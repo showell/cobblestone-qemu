@@ -104,6 +104,11 @@ tree. Measured 2026-09-13: every unit in the curated `cobblestone` (28) and
 only a missing cited chapter could reach the fallback. The Rust-side arms run
 with `CODEX_ROOT` unset, which turns that case into a loud refusal.
 
+The same day, the global export was deleted from `~/.bashrc` (Steve's call).
+His direction for the third row: Rust does ALL its own resolution, with no
+fallthroughs. The fallback and `CODEXC_RAW` are slated to go, and the design
+comes before the code.
+
 ### 3a. A foreword present under another prefix goes in twice
 
 Read from code: the table's last cell.
