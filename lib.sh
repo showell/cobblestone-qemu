@@ -52,11 +52,12 @@ ring_plug_fresh() {
     printf '%s\n' "$out" | tail -1
     "$PWSH" -NoProfile -File "$T/assemble_unit.ps1" -Src "$S/ringplug-source.codex" \
         -Mode 'CDX map' -Out "$S/ringplug-cdx.blob" || return 1
-    # Content, never mtime: the blob is deterministic and the fingerprint IS
-    # its sha, so a match means this exact plug is already compiled. The BLOB
-    # rather than the bundle, because the blob is what the seed reads, and it
-    # carries the chapters resolved ahead of the bundle as well.
-    want=$(sha256sum "$S/ringplug-cdx.blob" | awk '{print $1}')
+    # Content, never mtime: the bundle is deterministic and the fingerprint IS
+    # its sha, so a match means this exact plug is already compiled. It is the
+    # BUNDLE's sha and not the blob's because plug_run_ring.py re-bundles and
+    # compares the same thing; the chapters resolved ahead of the bundle come
+    # from the same checkout, which a sandbox refuses to see move.
+    want=$(sha256sum "$S/ringplug-source.codex" | awk '{print $1}')
     if [ -s "$S/ringplug.cdx" ] && [ "$(cat "$S/ringplug.cdx.fp" 2>/dev/null)" = "$want" ]; then
         echo "ringplug.cdx already matches this bundle -- not recompiling"
         return 0
