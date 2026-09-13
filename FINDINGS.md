@@ -84,30 +84,39 @@ hand-waving, and complain if upstream makes bundles cluttered or less
 transparent. Each entry separates what is measured from what is read from code,
 and says what would make it a finding.
 
-Every unit our harnesses build passes through two resolvers:
+The resolvers a unit can pass through here:
 
 | resolver | file | who calls it here | when "already present" counts |
 |---|---|---|---|
 | `Resolve-PlugForewords` | `codex/plugs/common/plug-build-lib.ps1` | every bundler in `subjects/`, and codex-zig-transpiler's | asked FIRST, before the registry. That is OUR PR 69, landed 2026-08-19 (`a061c173`) |
 | `Resolve-CiteOrder` | `build/quire-map.ps1` | `assemble_unit.ps1` here, as upstream's `build/compile.ps1` and `build/bundle-app.ps1` call it | for a manifest quire, first. For a per-chapter quire such as Foreword, ONLY when the chapter's file is missing (since Update 35, `faf1c639`); otherwise only a `Quire--Name` header, through `SeedSeen`, stops a second copy |
-
-| `load` / `resolve` | rust-codex-compiler `src/bundle.rs` | `bundle`, and `codexrun`, `irdump`, `desugardump`, `rocemit` on every unit they read | by BARE chapter name (`Quire--` is stripped), like `Resolve-PlugForewords`. It adds `IMPLICIT` (Foreword ListUtils, Tuple) to the cites, as upstream does, and resolves whatever is missing against `CODEX_ROOT`, lazily |
+| `cite_resolve.py` (Python) | the deprecated ladder, and safari-codex `harness/cite_resolve.py`, a copy differing only in where the checkout comes from | curated-tests `curate.py` and the old corpus cut `~/units-current` (the ladder's); safari's wasm build `harness/bundle.py` (safari's) | NEVER for a cite, only for the implicit pair (keyed `Quire--Name`), so a resolved unit's cites are fetched again and the unit doubles. Headers are never renamed; cites are found by regex; chapters already reached are skipped by path |
+| `load` / `resolve` | rust-codex-compiler `src/bundle.rs` | `bundle`, and `codexrun`, `irdump`, `rocemit` on every file they read | as the COMPILER'S scoper decides it (`find-slug-for-cite-name`), not as either build script does: `Quire--Name` first, then the one chapter of that name under any prefix or none, compared like `cite-key`; several is refused. It adds `IMPLICIT` (Foreword ListUtils, Tuple) to the cites. A file missing nothing is a unit and is read as it is; otherwise the checkout is the tree the file lives in, or a `checkout` line in the nearest `quires.tsv`, and a cited chapter goes in as `Quire--Name`. No environment variable |
 
 None of this changed in Updates 59 or 60. U59 put the first `for` into a
 chapter we bundle, and that is what made 3b bite.
 
-**The third row is OURS, and its fallback is the ambient-checkout trap.** A
-unit short of any cited or implicit chapter is quietly re-resolved against
-whatever `CODEX_ROOT` holds. This box exports one globally, pointing at another
-tree. Measured 2026-09-13: every unit in the curated `cobblestone` (28) and
-`roc` (46) dirs and in safari's `units/` (54) carries ListUtils and Tuple, so
-only a missing cited chapter could reach the fallback. The Rust-side arms run
-with `CODEX_ROOT` unset, which turns that case into a loud refusal.
+**The last row is OURS, and it follows the compiler, not either build script.**
+Steve's direction (2026-09-13): Rust does all its own resolution, with no
+fallthroughs. It reads no environment variable, and the box's global
+`CODEX_ROOT` export is gone. Measured at U60 the same day:
 
-The same day, the global export was deleted from `~/.bashrc` (Steve's call).
-His direction for the third row: Rust does ALL its own resolution, with no
-fallthroughs. The fallback and `CODEXC_RAW` are slated to go, and the design
-comes before the code.
+    tools/resolver_agree.py, 1,293 programs under codex/test, apps/ out
+      1,291  the same chapter headers, in the same order, as compile.ps1's
+          2  both refuse: errors/missing-cite, errors/unregistered-quire-cite
+    bundle one hands back byte for byte every unit the Rust arms read:
+      the self-host subject, safari units/ 54, curated cobblestone 28, roc 46
+
+A stricter rule came first, "present only as `Quire--Name`", and it refused
+too much: the self-host subject (upstream's plug bundler writes
+`Parsmi--Build Settings` for `cites Codex chapter Build Settings`), all 128
+curated and safari units (plain `Chapter: ListUtils`), and
+`cite-override-quire.codex`, which upstream's battery (`bvt.ps1:120`) requires
+to compile. The scoper already had a rule for all three.
+
+Where ours and `Resolve-CiteOrder` must differ, `codex/test` has no case: a
+program carrying a Foreword chapter under another prefix gets it once from us
+and twice from upstream (3a). The check would list it as "different chapters".
 
 ### 3a. A foreword present under another prefix goes in twice
 
@@ -163,3 +172,17 @@ see: anything keyed on variable ids moves when the implicit set does.
 
 Would be worth raising upstream: the implicit set growing past these two, or
 the same shape costing a comparison or a gate on their side.
+
+### 3c. The scoper's bare-name fallback counts definitions, not chapters
+
+Read from code, not measured: `find-slug-by-bare-name`
+(`Semantics/ChapterScoper.codex`) answers only when `count-bare-matches` is 1.
+It counts entries of `slug-cache`, which `scope-achapter` builds with one entry
+per DEFINITION (`for a in assignments`). On that reading, a cite that reaches
+its chapter by bare name finds no chapter at all when the chapter has two or
+more definitions. `cite-override-quire.codex` has one in `CiteOverrideAlpha`,
+which would be why it passes.
+
+Would make it a finding: that test with a second definition added to
+`CiteOverrideAlpha`, compiled by `codexir` on the unit `compile.ps1` builds.
+If it fails with CDX3002, or prints `101`, the reading is right.
