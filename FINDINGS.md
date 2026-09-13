@@ -2,6 +2,13 @@
 
 ## 1. SENT as [issue 126](https://github.com/damiant3/Cobblestone/issues/126). The plug-built compiler types EVERY comparison `error`, where bare metal says `boolean`
 
+**CLOSED upstream at Update 60 (`9fff850c`), and measured here on 2026-09-13.**
+`codexir` built from that checkout by `./build.sh codexir` types all six
+comparisons `boolean`, and its IR for the six-comparison chapter is
+byte-identical to the seed's when both read the same unit. Which change
+flipped it on our road is not measured. What follows is the finding as it
+was found.
+
 **Found 2026-09-04, the first day this repo existed, by diffing the IR the two
 arms produce for the same file.**
 

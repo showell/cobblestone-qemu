@@ -64,8 +64,15 @@ if native.exists():
     # before comparing, or the diff is an encoding difference wearing a hat.
     sys.path.insert(0, str(REPO))
     from cce import decode
+    # The native tool reads the UNIT bare metal read -- the blob without its
+    # mode line and EOT -- and not fib.codex bare. The chapters resolved ahead
+    # of fib survive pruning as sections, ctors and type defs, so handing the
+    # two arms different source reads as an IR difference that is neither's.
+    unit = work / 'qemu-fib-unit.codex'
+    b_ = blob.read_bytes()
+    unit.write_bytes(b_[b_.index(b'\n') + 1:].rstrip(b'\x04'))
     nat = work / 'qemu-fib-native.ir'
-    with open(c.FIB, 'rb') as f, open(nat, 'wb') as o:
+    with open(unit, 'rb') as f, open(nat, 'wb') as o:
         subprocess.run([str(native)], stdin=f, stdout=subprocess.DEVNULL, stderr=o)
     bm = decode(ir.read_bytes())
     if bm == nat.read_text():
