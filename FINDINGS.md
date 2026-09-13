@@ -91,8 +91,18 @@ Every unit our harnesses build passes through two resolvers:
 | `Resolve-PlugForewords` | `codex/plugs/common/plug-build-lib.ps1` | every bundler in `subjects/`, and codex-zig-transpiler's | asked FIRST, before the registry. That is OUR PR 69, landed 2026-08-19 (`a061c173`) |
 | `Resolve-CiteOrder` | `build/quire-map.ps1` | `assemble_unit.ps1` here, as upstream's `build/compile.ps1` and `build/bundle-app.ps1` call it | for a manifest quire, first. For a per-chapter quire such as Foreword, ONLY when the chapter's file is missing (since Update 35, `faf1c639`); otherwise only a `Quire--Name` header, through `SeedSeen`, stops a second copy |
 
+| `load` / `resolve` | rust-codex-compiler `src/bundle.rs` | `bundle`, and `codexrun`, `irdump`, `desugardump`, `rocemit` on every unit they read | by BARE chapter name (`Quire--` is stripped), like `Resolve-PlugForewords`. It adds `IMPLICIT` (Foreword ListUtils, Tuple) to the cites, as upstream does, and resolves whatever is missing against `CODEX_ROOT`, lazily |
+
 None of this changed in Updates 59 or 60. U59 put the first `for` into a
 chapter we bundle, and that is what made 3b bite.
+
+**The third row is OURS, and its fallback is the ambient-checkout trap.** A
+unit short of any cited or implicit chapter is quietly re-resolved against
+whatever `CODEX_ROOT` holds. This box exports one globally, pointing at another
+tree. Measured 2026-09-13: every unit in the curated `cobblestone` (28) and
+`roc` (46) dirs and in safari's `units/` (54) carries ListUtils and Tuple, so
+only a missing cited chapter could reach the fallback. The Rust-side arms run
+with `CODEX_ROOT` unset, which turns that case into a loud refusal.
 
 ### 3a. A foreword present under another prefix goes in twice
 
