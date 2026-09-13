@@ -76,3 +76,75 @@ generically.
 `"Program"` is seven characters against `"WarmupFib"`'s nine; `boolean` is seven
 against `error`'s five. Both files came out at exactly 1,214 bytes, so a size
 check — which is the cheap check anyone reaches for first — said they matched.
+
+## 3. WATCHING, not a finding: the two cite resolvers
+
+Opened 2026-09-13 at Update 60 (`9fff850c`). Steve's ask: track these without
+hand-waving, and complain if upstream makes bundles cluttered or less
+transparent. Each entry separates what is measured from what is read from code,
+and says what would make it a finding.
+
+Every unit our harnesses build passes through two resolvers:
+
+| resolver | file | who calls it here | when "already present" counts |
+|---|---|---|---|
+| `Resolve-PlugForewords` | `codex/plugs/common/plug-build-lib.ps1` | every bundler in `subjects/`, and codex-zig-transpiler's | asked FIRST, before the registry. That is OUR PR 69, landed 2026-08-19 (`a061c173`) |
+| `Resolve-CiteOrder` | `build/quire-map.ps1` | `assemble_unit.ps1` here, as upstream's `build/compile.ps1` and `build/bundle-app.ps1` call it | for a manifest quire, first. For a per-chapter quire such as Foreword, ONLY when the chapter's file is missing (since Update 35, `faf1c639`); otherwise only a `Quire--Name` header, through `SeedSeen`, stops a second copy |
+
+None of this changed in Updates 59 or 60. U59 put the first `for` into a
+chapter we bundle, and that is what made 3b bite.
+
+### 3a. A foreword present under another prefix goes in twice
+
+Read from code: the table's last cell.
+
+Measured at U60 on codex-zig-transpiler's transpiler subject. Its bundler
+listed Maybe, Wrap64, Fat16, ImportGate and FactDisk as `Parsmi--<name>`.
+`Resolve-PlugForewords` counted them present; `Resolve-CiteOrder` resolved all
+five again, 2,749 lines, and `compile.ps1`'s own WARNING named them. That
+bundler now leaves the five to `Resolve-PlugForewords`, which brings them in as
+`Foreword--<name>` (codex-zig-transpiler `953e39d`).
+
+This is the defect PR 69 described ("presence satisfies a cite only as a
+fallback"), in the resolver PR 69 did not touch. `plug-build-lib`'s comment
+"Same rule as Resolve-CiteOrder's, same helper" is true of the helper, not of
+the order.
+
+Would make it a finding: a bundle upstream actually builds that carries a
+chapter under one prefix and cites it under another. PR 69 argued that a plug
+bundle built through `Build-TranspilerPlug` cannot. NOT checked: apps through
+`bundle-app.ps1`, and `concat-codex-self.ps1`, which prefixes by directory.
+
+### 3b. Every unit carries ListUtils and Tuple, and they reach the emitted zig
+
+Read from code: `Resolve-CiteOrder` walks Foreword ListUtils and Tuple for
+every unit, unconditionally (since Update 36, `b1c50258`), because the
+desugarer writes `map-list` for a `for` and `MkTup<N>` for a tuple. Its comment
+prices this at "a fixed 5 KB per unit". `compile.ps1` exempts the two from its
+WARNING.
+
+Measured at U60 on fib, which uses neither sugar. The comparison is native
+`codexir` on `fib.codex` against the same tool on the unit bare metal reads,
+then `zigemit` on each:
+
+    unit          +3,731 bytes, 123 lines ahead of fib
+    IR            1,214 -> 1,863 bytes
+      (sections)    "Main" -> seven names, six of them not fib's
+      (ctors)       empty -> MkTup2 MkTup3 MkTup4 MkTup5
+      (type-defs)   empty -> Tup2 Tup3 Tup4 Tup5
+      row var ids   in `opening`, 6 -> 460 and 15 -> 469
+    zig           14,877 -> 15,491 bytes: 24 lines added at the top, the
+                  generic type functions Tup2..Tup5, and nothing else changed
+
+Pruning removes the unused definitions, but not the type defs, the ctor list or
+the section names. Checking the implicit chapters also shifts the ids minted for
+the program's own rows. fib's output is unchanged on every route.
+
+What to watch is transparency, not correctness. A program's IR and zig
+describe types the program never mentions, and a comparison that forgets the
+implicit pair reads the difference as a real one. The QEMU checker did, once
+(fixed in `72c9b5c`). The row-id shift is the kind of difference the counters
+see: anything keyed on variable ids moves when the implicit set does.
+
+Would be worth raising upstream: the implicit set growing past these two, or
+the same shape costing a comparison or a gate on their side.
