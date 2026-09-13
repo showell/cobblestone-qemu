@@ -36,10 +36,14 @@ work.mkdir(exist_ok=True)
 blob, ir, zg, exe = (work / 'qemu-fib.blob', work / 'qemu-fib.ir',
                      work / 'qemu-fib.zig', work / 'qemu-fib')
 
-src = c.FIB.read_bytes()
-blob.write_bytes(b'IR-CCE decks=172\n' + src + b'\x04')
-
 env = dict(os.environ, SANDBOX=str(S))
+# The unit is assembled the way upstream's compile.ps1 assembles it -- see
+# assemble_unit.ps1 -- so bare metal reads what the driver would hand it.
+pwsh = os.environ.get('PWSH', os.path.expanduser('~/.local/pwsh/pwsh'))
+a = c.run([pwsh, '-NoProfile', '-File', str(REPO / 'assemble_unit.ps1'),
+           '-Src', str(c.FIB), '-Mode', 'IR-CCE decks=172', '-Out', str(blob)], env=env)
+if a.returncode:
+    c.fail(f'could not assemble the unit:\n{a.stdout[-400:]}{a.stderr[-400:]}')
 r = c.run([sys.executable, '-u', str(REPO / 'ring_compile.py'), str(blob), str(ir)], env=env)
 if not ir.exists() or not ir.stat().st_size:
     c.fail(f'bare-metal compile produced no IR:\n{r.stdout[-400:]}{r.stderr[-400:]}')

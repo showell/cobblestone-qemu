@@ -50,13 +50,13 @@ ring_plug_fresh() {
     out=$("$PWSH" -NoProfile -File "$T/subjects/bundle_ringplug.ps1" 2>&1) \
         || { printf '%s\n' "$out" | tail -5; return 1; }
     printf '%s\n' "$out" | tail -1
-    python3 -c "
-src = open('$S/ringplug-source.codex','rb').read()
-open('$S/ringplug-cdx.blob','wb').write(b'CDX map\n' + src + b'\x04')
-print(f'blob: {len(src)} bytes')"
-    # Content, never mtime: the bundle is deterministic and the fingerprint IS
-    # its sha, so a match means this exact plug is already compiled.
-    want=$(sha256sum "$S/ringplug-source.codex" | awk '{print $1}')
+    "$PWSH" -NoProfile -File "$T/assemble_unit.ps1" -Src "$S/ringplug-source.codex" \
+        -Mode 'CDX map' -Out "$S/ringplug-cdx.blob" || return 1
+    # Content, never mtime: the blob is deterministic and the fingerprint IS
+    # its sha, so a match means this exact plug is already compiled. The BLOB
+    # rather than the bundle, because the blob is what the seed reads, and it
+    # carries the chapters resolved ahead of the bundle as well.
+    want=$(sha256sum "$S/ringplug-cdx.blob" | awk '{print $1}')
     if [ -s "$S/ringplug.cdx" ] && [ "$(cat "$S/ringplug.cdx.fp" 2>/dev/null)" = "$want" ]; then
         echo "ringplug.cdx already matches this bundle -- not recompiling"
         return 0
@@ -91,10 +91,8 @@ build_one() {
         [ -s "$subject" ] || { echo "BUNDLE FAILED: no $subject"; return 1; }
     fi
 
-    python3 -c "
-src = open('$S/$subject','rb').read()
-open('$S/$name-ir.blob','wb').write(b'IR-CCE decks=172\n' + src + b'\x04')
-print(f'blob: {len(src)} bytes of source')"
+    "$PWSH" -NoProfile -File "$T/assemble_unit.ps1" -Src "$S/$subject" \
+        -Mode 'IR-CCE decks=172' -Out "$S/$name-ir.blob" || return 1
 
     echo "--- compiling $name to IR (seed, QEMU)"
     tp=$(date +%s)

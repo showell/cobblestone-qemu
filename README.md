@@ -123,7 +123,11 @@ Every subject goes through the same pipeline, and only the last is not a VM:
 1. **bundle** — assemble the subject and everything it cites (`pwsh`, upstream's
    own `plug-build-lib.ps1`)
 2. **compile** — push it through the seed under QEMU, out comes IR
-   (`ring_compile.py`)
+   (`ring_compile.py`). The seed reads what upstream's `build/compile.ps1`
+   would send it: `assemble_unit.ps1` runs the checkout's own cite resolver
+   over the bundle and puts what it adds ahead of it. For a complete bundle
+   that is Foreword ListUtils and Tuple, which every unit gets because `for`
+   desugars to `map-list` and a tuple to `MkTup<N>`.
 3. **transpile** — push that IR through the ring plug under QEMU, out comes zig
    (`plug_run_ring.py`)
 4. **build** — `zig build-exe`, on the host
