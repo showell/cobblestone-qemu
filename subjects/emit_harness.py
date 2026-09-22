@@ -533,15 +533,14 @@ def frontend_source(src, passes, scan=True, deck_bytes=None, resolve=True, lift=
     harnesses and the hosted compiler alike -- so it is written once. `src` is
     whatever expression yields the source Text.
 
-    `resolve` runs the RESOLVE phase (build-type-def-map + rewrite-ir-defs)
-    and must mirror which driver the harness stands in for: it lives in
-    compile-frontend-cdx ONLY -- compile-frontend-ir, the sequence behind
-    emit-ir-cce, emits the IR with its annotations unrewritten. A harness
-    that dumps IR with resolve on prints record-ty where the seed driver
-    prints ctd for every let binding whose nullary ConstructedTy resolves
-    to a record -- 930 lines of the ir_to_x86 IR. The CDX harnesses keep it on
-    (finding 11 is what skipping it costs THEM); the IR-emitting harness
-    turns it off.
+    `resolve` runs the RESOLVE phase (build-type-def-map + rewrite-ir-defs).
+    Both driver entries run it: compile-frontend-cdx and compile-frontend-ir
+    are compile-frontend-passes with run-passes True, and RESOLVE follows the
+    IR pipeline there (opening.codex:851). Every harness standing in for either
+    one keeps it on. Finding 11 is what skipping it costs a CDX harness; for
+    the IR-emitting one, since Update 61's COMPILER-81 repair, it is every
+    type variable the definition's signature does not carry, which RESOLVE
+    closes to int-default and a harness without it leaves as `(tvar N)`.
 
     `passes` runs the IR pipeline between lower and emit, where
     compile-frontend-passes runs it. Not cosmetic: IR emission prunes to what

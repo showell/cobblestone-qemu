@@ -89,7 +89,7 @@ Section: Driver
 
   opening : [Console, FileSystem] Nothing = act
     src <- read-file-uni "/dev/stdin"
-    {frontend_source("src", True, deck_bytes=HOSTED_DECK_BYTES, resolve=False, lift=True)}
+    {frontend_source("src", True, deck_bytes=HOSTED_DECK_BYTES, resolve=True, lift=True)}
     {halt_gate('irc', 'IR')}let meta = IRTextMeta {{
       chapter-title = ch.chapter-title,
       prose = ch.prose,
