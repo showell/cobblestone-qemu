@@ -12,9 +12,9 @@ Chapter: ZigPlugRing
  (code 0 is reserved). That difference is what admits IRs past the TCP
  intake ceiling.
 
- The output side mimics the compiler's own text-plug wire -- a SIZE:
- line, then the payload as raw CCE bytes -- so the host-side capture in
- ring_compile.py works unchanged with this cdx as the kernel.
+ The output side is the zig text as the emitter streams it, then a
+ `RINGPLUG-END` line; ring_compile.py's capture ends there. See the
+ note below the body for why there is no longer a `SIZE:` line.
 
 Section: Body
 
