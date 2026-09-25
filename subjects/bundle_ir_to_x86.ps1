@@ -126,30 +126,24 @@ foreach ($ch in $ExtraChapters) {
 # carries it can call `compile-frontend-cdx` instead of reimplementing it, and a
 # moved signature then becomes a compile error at a call we did not write.
 #
-# The six foreword chapters are carried REAL rather than stubbed. Stubbing was
-# tried and abandoned: `gate-import` answers `ImportResult`, a type outside the
-# cited list, so the stub surface has a transitive closure and every guessed
-# record shape is a type error waiting. These compile and guess nothing, and
-# `compile-frontend-cdx` never reaches a disk. BootPaint is the one that must
-# stay a stub -- `bp-rtc-seconds` is a wall clock and a rung whose truth changes
-# between two identical runs is not an oracle.
+# The foreword chapters the driver cites are carried REAL, and they are NOT
+# named here. assemble_unit.ps1 runs the checkout's own cite resolver over the
+# bundle, as build/compile.ps1 does, and puts what it adds ahead of it -- at U62
+# twenty-two Foreword chapters, the six opening.codex cites and their closure.
+# This block used to list those six by hand, from before assemble_unit resolved
+# cites (U60, b7dcd33); with no caller it went unnoticed until codexir took the
+# driver at U62 and every type in them came out twice (CDX3001, __eq_Maybe and
+# fourteen more). BootPaint is the one that must stay a stub -- `bp-rtc-seconds`
+# is a wall clock and a rung whose truth changes between two identical runs is
+# not an oracle.
 #
-# The middle end is here because the driver READS it without citing it: B5 gives
-# a bundle one flat namespace, so upstream never notices `opening.codex` using
-# `run-ir-pipeline` while citing nothing that defines it. A wrapper that also
-# names these must stop, because ADD-PLUGCHAPTER DOES NOT DE-DUPLICATE ACROSS
+# The middle end comes with the driver because the driver READS it without
+# citing it: B5 gives a bundle one flat namespace, so upstream never notices
+# `opening.codex` using `run-ir-pipeline` while citing nothing that defines it.
+# It is -WithMiddleEnd's list, above. A wrapper that also passes those paths as
+# ExtraChapters must stop, because ADD-PLUGCHAPTER DOES NOT DE-DUPLICATE ACROSS
 # CALLS -- the result is CDX3004, "spans 2 files, but this page carries no
 # Page N of M marker", once per chapter.
-if ($WithDriver) {
-    @('codex/foreword/core/Maybe.codex',
-      'codex/foreword/core/Wrap64.codex',
-      'codex/foreword/core/CCE.codex',
-      'codex/foreword/core/Fat16.codex',
-      'codex/foreword/core/ImportGate.codex',
-      'codex/foreword/core/FactDisk.codex') | ForEach-Object {
-        Add-PlugChapter -Lines $lines -Path (Join-Path $repo $_) -Quire 'Parsmi'
-    }
-}
 $bootPaintPath = if ($BootPaint -match '/') { Join-Path $repo $BootPaint } else { Join-Path $src $BootPaint }
 Add-PlugChapter -Lines $lines -Path $bootPaintPath -Quire 'Parsmi'
 Add-PlugChapter -Lines $lines -Path (Join-Path $out $Harness) -Quire 'Parsmi'

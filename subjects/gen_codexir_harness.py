@@ -9,43 +9,34 @@ seed out of the pipeline. With this and ZigEmitHosted, the chain
 
 is three native processes and no VM at all.
 
-The driver is emit-ir-cce's own sequence (opening.codex ~1694), minus the deck
-and heap accounting and using the whole-text form rather than the streaming
-one: a hosted process has no reason to avoid materialising the text, and
-ir-print-defs exists to avoid exactly that.
+**THE DRIVER IS UPSTREAM'S, CALLED, NOT COPIED (since U62).** The body is
+`emit-ir-uni` (opening.codex): `compile-frontend-ir`, then
+`prepare-method-ir`, then `emit-ir-chapter` over what it prepared. The subject
+carries Chapter: Opening (`bundle_codexir.ps1` asks for `-WithDriver`), which
+Update 55's split of `opening` into EntryPoint.codex made possible.
 
-Two things it must not skip, because they decide what the IR CONTAINS:
+Until U62 this file stood in for the driver with its own copy of the
+sequence, and the copy drifted three times that we know of:
 
-  ir-prune-unreachable-roots  -- the IR is what is reachable from the roots,
-                                 not every def in the unit
-  emit-ir-chapter's meta      -- chapter title, prose, section titles, ctor
-                                 names, prose blocks, annotations and ground
-                                 effects all ride the text wire
+  - 2026-08-25: it pruned to four of the driver's six emit roots, missing
+    `fat16-servicer-read` and `fat16-servicer-write`. CodexZigHarness
+    inherited the truncation, so both arms agreed and nothing saw it.
+  - COMPILER-44 onward: the driver attaches the instantiated equality helpers
+    (`eq-attach-helpers`) before emitting IR. The copy never did.
+  - U62: IR emission became `prepare-method-ir`, which runs
+    `method-materialize` and fills IRTextMeta's new `method-templates` field.
+    The copy did not compile.
 
-And one it MUST skip, for the same reason: the RESOLVE phase belongs to
-compile-frontend-cdx, and compile-frontend-ir -- the sequence this stands in
-for -- never runs it. Running it here rewrote every let binding whose nullary
-ConstructedTy names a record into a RecordTy the seed driver leaves as ctd:
-930 lines of the ir_to_x86 IR, and an IR wire the plug was never fed by the
-oracle path. frontend_source's resolve flag carries the why.
-
-ir-emit-roots is copied from opening.codex:1316 rather than cited, because
-opening.codex cannot be bundled beside a harness that defines `opening`. If
-that list changes upstream, this copy is wrong and the IR will be missing a
-root -- which is the cost of standing in for the driver.
-
-**And it HAD drifted, found by a cold read 2026-08-25.** Upstream carries six
-roots; this copy carried four, missing `fat16-servicer-read` and
-`fat16-servicer-write`. Nothing noticed because CodexZigHarness inherited the
-same truncation, so both arms pruned the same two roots and agreed with each
-other -- an oracle cannot see a mistake both of its arms make. Any subject
-reaching either servicer lost it from the IR silently.
+What stays ours is only the output shape: the IR text alone on the wire (the
+driver frames it with IR-BEGIN/IR-END and heap marks), and the halt message.
+The source goes in as read, as it always has here; the driver's mode line,
+utf8-to-cce and quotation split belong to its stdin protocol, not to this
+tool's.
 """
 import pathlib
 import sys
 
-from emit_harness import (frontend_source, HOSTED_DECK_BYTES, LIFT_PROSE,
-                          halt_gate, halt_formatter)
+from emit_harness import halt_formatter
 
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent))
@@ -56,8 +47,8 @@ out = f'''Chapter: CodexIrHarness
 
 Section: Halt
 
- The driver does not emit when the bag has errors -- opening.codex:1676-1678
- prints the codegen header and then `if bag-has-errors (fe.bag) then
+ The driver does not emit when the bag has errors -- emit-ir-uni prints the
+ codegen header and then `if bag-has-errors (prepared.bag) then
  print-line-uni "CODEGEN-HALTED: errors in bag; no IR emitted"`. This harness
  did not, until 2026-08-26, and that is not a cosmetic gap.
 
@@ -76,30 +67,16 @@ Section: Halt
 
 {halt_formatter('irc', 'IR')}
 
-Section: Roots
-
- opening.codex:1316, copied because that chapter cannot ride along.
-
-  irc-emit-roots : List Text
-  irc-emit-roots = ["opening", "vb-capacity-auto", "vb-read-auto", "vb-write-auto", "fat16-servicer-read", "fat16-servicer-write"]
-
 Section: Driver
 
-{LIFT_PROSE}
+ emit-ir-uni's sequence with compile-flags-default, printing the IR alone.
 
   opening : [Console, FileSystem] Nothing = act
     src <- read-file-uni "/dev/stdin"
-    {frontend_source("src", True, deck_bytes=HOSTED_DECK_BYTES, resolve=True, lift=True)}
-    {halt_gate('irc', 'IR')}let meta = IRTextMeta {{
-      chapter-title = ch.chapter-title,
-      prose = ch.prose,
-      section-titles = ch.section-titles,
-      ctor-names = rr.ctor-names,
-      prose-blocks = ch.prose-blocks,
-      annotations = ch.annotations,
-      ground-effects = ch.ground-effects
-    }}
-    in print-text (emit-ir-chapter (ir-prune-unreachable-roots ir irc-emit-roots) meta (ch.type-defs))
+    let fe = compile-frontend-ir src "Program" compile-flags-default
+    in let prepared = prepare-method-ir fe compile-flags-default
+    in if bag-has-errors (prepared.bag) then print-text (irc-halted (bag-errors (prepared.bag)))
+    else print-text (emit-ir-chapter (prepared.chapter) (prepared.meta) (prepared.type-defs))
   end
 '''
 

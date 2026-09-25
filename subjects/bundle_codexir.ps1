@@ -1,8 +1,9 @@
 # The hosted-compiler subject: the whole rung's chapters, a different driver.
 # Identical chapter set to bundle_passes_to_x86.ps1 for the same reason
-# that one wraps bundle_ir_to_x86.ps1 -- one list, kept in one place. The
-# middle end is that script's -WithMiddleEnd rather than seven paths here, so
-# the one list is the checkout's build/compiler-order.txt.
+# that one wraps bundle_ir_to_x86.ps1 -- one list, kept in one place, and that
+# list is the checkout's build/compiler-order.txt. -WithDriver carries Chapter:
+# Opening (and with it the middle end), because the harness CALLS the driver's
+# IR front door rather than copying it: see gen_codexir_harness.py.
 #
 # bundle_codexzig.ps1 calls this with MoreChapters for the same reason again:
 # it wants this list plus the plug's emitter.
@@ -19,5 +20,5 @@ $ErrorActionPreference = 'Stop'
     -OutName $OutName `
     -PlugName $PlugName `
     -ExtraDrops $ExtraDrops `
-    -WithMiddleEnd `
+    -WithDriver `
     -ExtraChapters $MoreChapters
