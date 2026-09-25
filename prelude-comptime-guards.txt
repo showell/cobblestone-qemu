@@ -30,3 +30,12 @@
 # any other guard written this way. A precondition that names its type is
 # both a better error and invisible to the scan, which is the shape to
 # prefer for a new one.
+#
+# THE LIST IS NOT EMPTY AGAIN AS OF U62. Upstream's answer to our issue 157
+# item 3 (main 26086) is a top-level comptime block, emitted into EVERY
+# program by ZigEmitter.codex's prelude, that refuses ReleaseFast and
+# ReleaseSmall. It cannot name a type, so it is a whole string and the scan
+# matched it: U62's first fib transpile was REFUSED on it. It is fixed text
+# and it only fires under a build mode we never use (native builds here are
+# Debug), so it is a precondition by this file's own definition.
+@compileError("emitted Codex traps on Integer overflow through zig's safety checks, and ReleaseFast and ReleaseSmall turn the trap into undefined behaviour; build with -O ReleaseSafe or -O Debug")

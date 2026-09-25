@@ -25,7 +25,11 @@ param(
     # its harness CALLS the driver; carrying it otherwise costs a fifth of the
     # subject's lines and every byte of that is compiled by a guest. zigc asks
     # for it, the rungs still standing in for the driver do not.
-    [switch]$WithDriver
+    [switch]$WithDriver,
+    # OPT IN to the middle end: the IR pipeline run-ir-pipeline drives, plus
+    # LirTargets and the Codex emitter. The codexir subject runs it; x86emit
+    # does not, and every line it would add is compiled by a guest.
+    [switch]$WithMiddleEnd
 )
 $ErrorActionPreference = 'Stop'
 $ladder = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path  # ladder-root-bootstrap: reaches the LADDER only; the checkout comes from ladder_root
@@ -69,65 +73,43 @@ $lines = [System.Collections.Generic.List[string]]::new()
 # defining list-map, fold-list, list-take and the rest, which is what every
 # CDX3006 in this rung's log was telling us. See bundle_parse.ps1, where the
 # explicit listing IS the only copy and stays.
-foreach ($ch in @('codex/compiler/Core/OffsetTable.codex',
-                  'codex/compiler/Core/VmProfile.codex',
-                  'codex/compiler/Types/Builtins.codex',
-                  'codex/compiler/IR/Lir.codex',
-                  'codex/compiler/Emit/EmitAllocator.codex',
-                  'codex/compiler/Emit/CdxWriter.codex',
-                  'codex/compiler/Emit/X86_64Boot.codex',
-                  'codex/compiler/Emit/X86_64Encoder.codex',
-                  'codex/compiler/Emit/X86_64State.codex',
-                  'codex/compiler/Emit/X86_64.codex',
-                  'codex/compiler/Emit/X86_64Builtins.codex',
-                  'codex/compiler/Emit/X86_64Chapter.codex',
-                  'codex/compiler/Emit/X86_64Compound.codex',
-                  'codex/compiler/Emit/X86_64Helpers.codex',
-                  'codex/compiler/Emit/X86_64IO.codex',
-                  'codex/compiler/Emit/X86_64IPCHelpers.codex',
-                  'codex/compiler/Emit/X86_64InsnCount.codex',
-                  'codex/compiler/Emit/X86_64Lir.codex',
-                  'codex/compiler/Emit/X86_64ListHelpers.codex',
-                  'codex/compiler/Emit/X86_64ProcessHelpers.codex',
-                  'codex/compiler/Emit/X86_64TextHelpers.codex',
-                  'codex/compiler/Core/BuildSettings.codex',
-                  'codex/compiler/Core/Phase.codex',
-                  'codex/compiler/Core/PhaseAllocator.codex',
-                  'codex/compiler/Core/TextFormat.codex',
-                  'codex/compiler/Core/CdxCodes.codex',
-                  'codex/compiler/Core/Severity.codex',
-                  'codex/compiler/Core/SourceText.codex',
-                  'codex/compiler/Core/Name.codex',
-                  'codex/compiler/Core/Diagnostic.codex',
-                  'codex/compiler/Core/DiagnosticBag.codex',
-                  'codex/compiler/Core/Collections.codex',
-                  'codex/compiler/Types/CodexType.codex',
-                  'codex/compiler/Types/CodexTypeHelpers.codex',
-                  'codex/compiler/IR/IRChapter.codex',
-                  'codex/compiler/Syntax/Token.codex',
-                  'codex/compiler/Syntax/Lexer.codex',
-                  'codex/compiler/Syntax/SyntaxNodes.codex',
-                  'codex/compiler/Syntax/ParserCore.codex',
-                  'codex/compiler/Syntax/ParserExpressions.codex',
-                  'codex/compiler/Syntax/Parser.codex',
-                  'codex/compiler/Ast/AstNodes.codex',
-                  'codex/compiler/Ast/Desugarer.codex',
-                  'codex/compiler/Core/SkipListText.codex',
-                  'codex/compiler/Semantics/ChapterScoper.codex',
-                  'codex/compiler/Semantics/NameResolver.codex',
-                  'codex/compiler/Types/CodexTypeTree.codex',
-                  'codex/compiler/Types/TypeEnv.codex',
-                  'codex/compiler/Types/Unifier.codex',
-                  'codex/compiler/Types/TypeChecker.codex',
-                  'codex/compiler/Types/TypeCheckerInference.codex',
-                  'codex/compiler/IR/LoweringTypes.codex',
-                  'codex/compiler/IR/Lowering.codex',
-                  # RESOLVE: rewrite-ir-defs. Every harness runs the driver's
-                  # resolve phase now, so every subject needs this chapter --
-                  # it used to arrive only via the whole rung's extras.
-                  'codex/compiler/IR/ResolveTypes.codex',
-                  'codex/compiler/Emit/IRTextEmitter.codex')) {
-    Add-PlugChapter -Lines $lines -Path (Join-Path $repo $ch) -Quire 'Parsmi'
+#
+# THE COMPILER'S CHAPTERS COME FROM THE CHECKOUT: build/compiler-order.txt,
+# in its order. Upstream's concat-codex-self.ps1 refuses any .codex under
+# codex/compiler without a row there, so it is the whole compiler by
+# construction. What is kept HERE is only what we leave OUT, each with its
+# reason, so a chapter upstream adds arrives without an edit on this side.
+#
+# That is the lesson of U62, which added IR/ConstShare and
+# IR/MethodSpecialization. This file used to name the 64 chapters it
+# carried, both new chapters were read by chapters on that list without a
+# cite (B5: one flat namespace), and codexir compiled to nine CDX3002s.
+$middleEnd = @('codex/compiler/IR/Occurrence.codex',
+               'codex/compiler/IR/IRCheck.codex',
+               'codex/compiler/IR/LambdaLifting.codex',
+               'codex/compiler/IR/Simplify.codex',
+               'codex/compiler/IR/Passes.codex',
+               'codex/compiler/IR/LirTargets.codex',
+               'codex/compiler/Emit/CodexEmitter.codex')
+$leftOut = @{
+    # A stub stands in (see $BootPaint): bp-rtc-seconds is a wall clock, and a
+    # rung whose truth changes between two identical runs is not an oracle.
+    'codex/compiler/Core/BootPaint.codex' = $true
+    # Always the harness's: every subject here defines its own `opening`.
+    'codex/compiler/EntryPoint.codex' = $true
+}
+if (-not $WithDriver) { $leftOut['codex/compiler/opening.codex'] = $true }
+if (-not ($WithMiddleEnd -or $WithDriver)) { foreach ($m in $middleEnd) { $leftOut[$m] = $true } }
+$orderFile = Join-Path $repo 'build/compiler-order.txt'
+$order = Get-Content $orderFile | ForEach-Object { $_.Trim() } |
+    Where-Object { $_ -and -not $_.StartsWith('#') } | ForEach-Object { $_ -replace '\\', '/' }
+foreach ($known in @($leftOut.Keys) + $middleEnd) {
+    if ($order -notcontains $known) { throw "$known has no row in $orderFile -- upstream moved it; read their change before editing this list" }
+}
+foreach ($ch in $order) {
+    if ($leftOut.ContainsKey($ch)) { continue }
+    $drop = if ($ExtraDrops.ContainsKey($ch)) { $ExtraDrops[$ch] } else { @() }
+    Add-PlugChapter -Lines $lines -Path (Join-Path $repo $ch) -Quire 'Parsmi' -DropSections $drop
 }
 # Update 42 gave PhaseAllocator a cite of Codex chapter BootPaint, and a cite
 # names a chapter, so the unit has to carry one. See BootPaintStubs.codex for
@@ -159,20 +141,12 @@ foreach ($ch in $ExtraChapters) {
 # CALLS -- the result is CDX3004, "spans 2 files, but this page carries no
 # Page N of M marker", once per chapter.
 if ($WithDriver) {
-    @('codex/compiler/IR/Occurrence.codex',
-      'codex/compiler/IR/IRCheck.codex',
-      'codex/compiler/IR/LambdaLifting.codex',
-      'codex/compiler/IR/Simplify.codex',
-      'codex/compiler/IR/Passes.codex',
-      'codex/compiler/IR/LirTargets.codex',
-      'codex/compiler/Emit/CodexEmitter.codex',
-      'codex/foreword/core/Maybe.codex',
+    @('codex/foreword/core/Maybe.codex',
       'codex/foreword/core/Wrap64.codex',
       'codex/foreword/core/CCE.codex',
       'codex/foreword/core/Fat16.codex',
       'codex/foreword/core/ImportGate.codex',
-      'codex/foreword/core/FactDisk.codex',
-      'codex/compiler/opening.codex') | ForEach-Object {
+      'codex/foreword/core/FactDisk.codex') | ForEach-Object {
         Add-PlugChapter -Lines $lines -Path (Join-Path $repo $_) -Quire 'Parsmi'
     }
 }
