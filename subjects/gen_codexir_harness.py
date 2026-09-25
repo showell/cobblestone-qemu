@@ -36,7 +36,7 @@ tool's.
 import pathlib
 import sys
 
-from emit_harness import halt_formatter
+from emit_harness import HOSTED_DECK_BYTES, deck_prologue, halt_formatter
 
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent))
@@ -69,11 +69,13 @@ Section: Halt
 
 Section: Driver
 
- emit-ir-uni's sequence with compile-flags-default, printing the IR alone.
+ emit-ir-uni's sequence with compile-flags-default, printing the IR alone,
+ behind the hosted deck prologue codex-zig-transpiler's harnesses carry in
+ front of the same driver calls (HOSTED_DECK_BYTES says why hosted is 512 MB).
 
   opening : [Console, FileSystem] Nothing = act
     src <- read-file-uni "/dev/stdin"
-    let fe = compile-frontend-ir src "Program" compile-flags-default
+    {deck_prologue(HOSTED_DECK_BYTES)}let fe = compile-frontend-ir src "Program" compile-flags-default
     in let prepared = prepare-method-ir fe compile-flags-default
     in if bag-has-errors (prepared.bag) then print-text (irc-halted (bag-errors (prepared.bag)))
     else print-text (emit-ir-chapter (prepared.chapter) (prepared.meta) (prepared.type-defs))
