@@ -274,6 +274,8 @@ LOWER_SETUP = """let lower-keep-height = demand-lower-keep-floor
 # catches it before a guest runs.
 def lower_call(ch='ch', bound='bound', cst='cst', rename=True,
                renames='[]', colliding='skip-list-text-empty', assignments='[]'):
+    require_arity('codex/compiler/IR/Lowering.codex', 'lower-chapter',
+                  LOWER_CHAPTER_ARITY)
     return (f"deck-record (lower-chapter {ch} {bound} {cst} (rr.ctor-names) "
             f"{renames} {colliding} {assignments} lower-ceiling {rename} "
             f"lower-keep-base (lower-keep-base + lower-keep-height))")
@@ -302,11 +304,61 @@ def lower_call(ch='ch', bound='bound', cst='cst', rename=True,
 # and then reads a Text whose length word is someone else's data -- measured
 # 2026-09-02 as !EXC=0d in `__str_concat` with R10 non-canonical, bumped by a
 # garbage length. See HARNESS_FIDELITY.md.
+#
+# UPDATE 63 ADDED A TENTH, `fidelity : Boolean` (opening.codex:620 passes
+# `flags.fidelity`). It turns on the checker's fid-types table for the
+# opt-in `fidelity` mode; `compile-flags-default` has it False, so False is
+# what passes here. Missing it failed the U63 x86emit build at `zig
+# build-exe`, twelve minutes in, as "no field named 'state' in struct
+# CxFn1(bool, ChapterResult)": the curried remainder waiting for the Bool.
+# `require_arity` below now refuses the moved signature at bundle time.
+CHECK_CHAPTER_ARITY = 10
+LOWER_CHAPTER_ARITY = 11
+
+
+def require_arity(rel, name, want):
+    """Refuse when the checkout's `name` does not take `want` parameters.
+
+    Codex curries, so an under-applied phase call is a value and never reads
+    as an arity error (see check_call and lower_call). The declaration is
+    the truth; this reads it, counting top-level commas before the last
+    top-level `->`, and says which call to fix.
+    """
+    import re
+    from roots import codex_root
+    path = codex_root() / rel
+    m = re.search(rf'^\s*{re.escape(name)}\s*:\s*(.*)$', path.read_text(), re.M)
+    if not m:
+        raise SystemExit(f'require_arity: no declaration of {name} in {path}')
+    sig, depth, cut, commas = m.group(1), 0, None, 0
+    for i, c in enumerate(sig):
+        if c == '(':
+            depth += 1
+        elif c == ')':
+            depth -= 1
+        elif depth == 0 and sig.startswith('->', i):
+            cut = i
+    params = sig[:cut]
+    depth = 0
+    for c in params:
+        depth += (c == '(') - (c == ')')
+        commas += depth == 0 and c == ','
+    got = commas + 1
+    if got != want:
+        raise SystemExit(
+            f'{name} takes {got} parameters in {rel}; emit_harness.py passes '
+            f'{want}. An under-applied call is a function value, not an error. '
+            f'Read the driver\'s call in opening.codex and fix the harness.\n'
+            f'  {name} : {sig.strip()}')
+
+
 def check_call(ch='ch', renames='[]', colliding='skip-list-text-empty',
-               assignments='[]'):
+               assignments='[]', fidelity='False'):
+    require_arity('codex/compiler/Types/TypeChecker.codex', 'check-chapter',
+                  CHECK_CHAPTER_ARITY)
     return (f"deck-record (check-chapter {ch} {renames} {colliding} "
             f"{assignments} check-ceiling check-base keep-base "
-            "(keep-base + keep-height - 4194304) 0)")
+            f"(keep-base + keep-height - 4194304) 0 {fidelity})")
 
 # The checker records a type for every expression, not only for bindings, and
 # the driver resolves that table too: opening.codex:635 runs
