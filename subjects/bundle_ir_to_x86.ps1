@@ -84,8 +84,13 @@ $lines = [System.Collections.Generic.List[string]]::new()
 # IR/MethodSpecialization. This file used to name the 64 chapters it
 # carried, both new chapters were read by chapters on that list without a
 # cite (B5: one flat namespace), and codexir compiled to nine CDX3002s.
+# U63 added IR/IRFidelity, the typed IR graded against the checker: only the
+# driver cites it (opening.codex, `ir-fidelity-bag`), and it cites IRCheck, so
+# it is middle end too. Carried without IRCheck it failed x86emit's bundle
+# ("cited Codex chapter 'IRCheck' ... not present in the unit").
 $middleEnd = @('codex/compiler/IR/Occurrence.codex',
                'codex/compiler/IR/IRCheck.codex',
+               'codex/compiler/IR/IRFidelity.codex',
                'codex/compiler/IR/LambdaLifting.codex',
                'codex/compiler/IR/Simplify.codex',
                'codex/compiler/IR/Passes.codex',

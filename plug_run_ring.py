@@ -6,18 +6,16 @@ before the parser sees anything (IrmemHarness); the ring intake is a
 machine-code loop at one byte per byte, which is what admits IRs past
 the TCP ceiling (ir_to_x86 at 13.1 MB under the u47 seed; sizes move per Update).
 
-The guest mimics the compiler's text-plug wire (SIZE: line + raw CCE),
-so compile_ring's capture works unchanged with the plug cdx as the
-kernel. The payload is decoded host-side by cce.py; any byte >= 97
-(multibyte CCE, unimplemented there) fails the run rather than leaving
-placeholders in a .zig file.
+Since U63 the guest streams its zig text with print-uni (UTF-8, not
+CCE) and ends it with a RINGPLUG-END line, so compile_ring captures in
+sentinel mode and the payload is decoded here as UTF-8; anything that
+is not valid UTF-8 fails the run rather than landing in a .zig file.
 
 Usage: plug_run_ring.py <ir> <out.zig> [plug_cdx]
 """
 import hashlib
 import os
 import pathlib
-import re
 import subprocess
 
 # This repository has no ignore rules, so an imported module must not leave a
@@ -28,7 +26,6 @@ import sys
 sys.dont_write_bytecode = True
 
 import ring_compile
-from cce import decode
 from roots import out_root
 
 
@@ -70,20 +67,23 @@ def run_ring_plug(ir_path, out_path, plug_cdx=None, mem_mb=None, timeout=1800):
     blob_path = str(out_path) + ".blob"
     with open(blob_path, "wb") as f:
         f.write(b"RING zig\n" + ir + b"\x00")
-    cce_path = str(out_path) + ".cce"
-    ok = ring_compile.compile_ring(blob_path, cce_path, mem_mb=mem_mb,
-                                   timeout=timeout, seed=plug_cdx)
+    # SINCE U63 THE PLUG STREAMS (see subjects/ZigPlugRing.codex): no SIZE
+    # line, the capture ends at the RINGPLUG-END sentinel, and the stream is
+    # printed with print-uni, so it arrives as text and is not CCE-decoded.
+    raw_path = str(out_path) + ".raw"
+    ok = ring_compile.compile_ring(blob_path, raw_path, mem_mb=mem_mb,
+                                   timeout=timeout, seed=plug_cdx,
+                                   sentinel=b"\nRINGPLUG-END")
     if not ok:
         return False
-    payload = open(cce_path, "rb").read()
-    text = decode(payload)
-    bad = re.search(r"<\d+>", text)
-    if bad:
-        off = bad.start()
-        raise SystemExit(f"{cce_path}: undecodable CCE byte near char {off}: "
-                         f"...{text[max(0, off - 40):off + 40]}...")
+    payload = open(raw_path, "rb").read()
+    try:
+        text = payload.decode("utf-8")
+    except UnicodeDecodeError as e:
+        raise SystemExit(f"{raw_path}: not UTF-8 at byte {e.start}: "
+                         f"{payload[max(0, e.start - 40):e.start + 40]!r}")
     open(out_path, "w").write(text)
-    print(f"wrote {out_path} ({len(text)} chars from {len(payload)} CCE bytes)")
+    print(f"wrote {out_path} ({len(text)} chars from {len(payload)} bytes)")
     return True
 
 

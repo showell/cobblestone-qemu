@@ -12,8 +12,9 @@ Chapter: ZigEmitHosted
  of building it this way: the same ZigEmitter compiled two ways, and the
  ladder already knows how to insist they agree.
 
- The output goes to stderr, because print-text is cx_print and cx_print
- is std.debug.print. Redirect with 2> and it is a file. Putting it on
+ The output goes to stderr, because the emitter prints with print-uni
+ (U63 streams it; see ZigPlugRing), which is cx_print, and cx_print is
+ std.debug.print. Redirect with 2> and it is a file. Putting it on
  stdout would want a builtin this plug does not have yet -- write-binary
  takes bytes and the emitter's answer is Text, so the conversion would
  have to happen in Codex rather than at the boundary.
@@ -23,5 +24,5 @@ Section: Body
   opening : [Console, FileSystem] Nothing = act
    src <- read-file-uni "/dev/stdin"
    let parsed = parse-ir-chapter src
-   in print-text (emit-zig-chapter (parsed.chapter) (parsed.type-defs))
+   in emit-zig-chapter-stream (parsed.chapter) (parsed.type-defs)
   end
